@@ -1,5 +1,7 @@
 import m from "mithril";
 import type { DiagramConfig } from "../model/types";
+import { SceneAnimation } from "../animation/timeline";
+import { minisplitCoolingScene } from "./layouts/minisplit";
 
 export type SceneAttrs = {
   config: DiagramConfig;
@@ -7,27 +9,14 @@ export type SceneAttrs = {
 };
 
 let mountCount = 0;
+let animation: SceneAnimation | null = null;
 
 export function getSceneMountCount(): number {
   return mountCount;
 }
 
-function applySceneState(svg: SVGSVGElement, attrs: SceneAttrs): void {
-  const { config, debugHighlight } = attrs;
-
-  svg.classList.toggle("is-highlighted", debugHighlight);
-  svg.dataset.systemType = config.systemType;
-  svg.dataset.mode = config.mode;
-  svg.dataset.componentStyle = config.componentStyle;
-  svg.dataset.background = config.background;
-  svg.dataset.playing = String(config.playback.playing);
-
-  const caption = svg.querySelector("[data-role='caption']");
-  if (caption) {
-    caption.textContent = config.playback.playing
-      ? "Viewport ready · playing (stub)"
-      : "Viewport ready · paused (stub)";
-  }
+function applyHighlight(svg: SVGSVGElement, highlighted: boolean): void {
+  svg.classList.toggle("is-highlighted", highlighted);
 }
 
 export const DiagramScene: m.Component<SceneAttrs> = {
@@ -35,16 +24,22 @@ export const DiagramScene: m.Component<SceneAttrs> = {
     mountCount += 1;
     const svg = vnode.dom as SVGSVGElement;
     svg.dataset.mountId = String(mountCount);
-    applySceneState(svg, vnode.attrs);
+    animation = new SceneAnimation();
+    animation.attach(svg, vnode.attrs.config.playback);
+    animation.applyConfig(vnode.attrs.config);
+    applyHighlight(svg, vnode.attrs.debugHighlight);
     m.redraw();
   },
 
   onupdate(vnode) {
-    applySceneState(vnode.dom as SVGSVGElement, vnode.attrs);
+    const svg = vnode.dom as SVGSVGElement;
+    animation?.applyConfig(vnode.attrs.config);
+    applyHighlight(svg, vnode.attrs.debugHighlight);
   },
 
   onremove() {
-    // Phase 1: kill the GSAP timeline owned by this scene.
+    animation?.destroy();
+    animation = null;
   },
 
   view() {
@@ -53,35 +48,9 @@ export const DiagramScene: m.Component<SceneAttrs> = {
       {
         viewBox: "0 0 960 540",
         role: "img",
-        "aria-label": "Heat pump cycle diagram",
+        "aria-label": "Mini-split heat pump cooling cycle",
       },
-      [
-        m("g.layer-background", { key: "background" }),
-        m("g.layer-equipment", { key: "equipment" }, [
-          m("rect.scene-placeholder", {
-            key: "placeholder",
-            x: 330,
-            y: 190,
-            width: 300,
-            height: 160,
-            rx: 10,
-          }),
-        ]),
-        m("g.layer-circuit", { key: "circuit" }),
-        m("g.layer-overlays", { key: "overlays" }, [
-          m(
-            "text.scene-caption",
-            {
-              key: "caption",
-              "data-role": "caption",
-              x: 480,
-              y: 278,
-              "text-anchor": "middle",
-            },
-            "Viewport ready",
-          ),
-        ]),
-      ],
+      minisplitCoolingScene(),
     );
   },
 };

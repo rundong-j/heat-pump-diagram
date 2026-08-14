@@ -7,9 +7,12 @@
   --line: #d8d2c6;
   --accent: #2f6f6a;
   --accent-ink: #f4f1ea;
-  --placeholder: #2a323c;
-  --placeholder-stroke: #6b7784;
   --highlight: #c4a35a;
+  --pipe-hot: #d08a4c;
+  --pipe-cold: #5ba3b5;
+  --unit-fill: #252c34;
+  --unit-stroke: #8b98a5;
+  --label: #e6edf2;
   --office-chrome-pad: 36px;
   font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
@@ -50,21 +53,172 @@ body {
   border: 1px solid #2e3640;
 }
 
-.scene-placeholder {
-  fill: var(--placeholder);
-  stroke: var(--placeholder-stroke);
-  stroke-width: 1.5;
+.diagram-scene.is-highlighted {
+  border-color: var(--highlight);
 }
 
-.diagram-scene.is-highlighted .scene-placeholder {
-  stroke: var(--highlight);
-  stroke-width: 3;
+.scene-caption,
+.zone-title {
+  fill: var(--label);
+  font-family: inherit;
 }
 
 .scene-caption {
-  fill: #d5dde4;
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.zone-title {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: #9aa6b2;
+}
+
+.wall {
+  stroke: #4a5561;
+  stroke-width: 2;
+  stroke-dasharray: 7 8;
+}
+
+.pipe {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pipe-high {
+  stroke: var(--pipe-hot);
+  stroke-width: 5;
+}
+
+.pipe-low {
+  stroke: var(--pipe-cold);
+  stroke-width: 7;
+}
+
+.refrigerant-loop {
+  fill: none;
+  stroke: none;
+  pointer-events: none;
+}
+
+.flow-arrow {
+  fill: var(--label);
+}
+
+.layer-particles {
+  opacity: 0;
+}
+
+.particle {
+  fill: #f4f1ea;
+  stroke: #121417;
+  stroke-width: 1;
+  will-change: transform;
+}
+
+.unit-body {
+  fill: var(--unit-fill);
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+}
+
+.unit-face {
+  fill: #1b2128;
+  stroke: #5f6b76;
+  stroke-width: 1;
+}
+
+.unit-vent {
+  fill: #3a4450;
+}
+
+.fan-ring,
+.fan-shroud {
+  fill: none;
+  stroke: var(--unit-stroke);
+  stroke-width: 2;
+}
+
+.fan-blades {
+  fill: #c5d0da;
+  will-change: transform;
+}
+
+.fan-hub {
+  fill: #8b98a5;
+}
+
+.evaporator-coil .coil-fins {
+  stroke: var(--pipe-cold);
+  stroke-width: 2;
+}
+
+.condenser-coil .coil-fins {
+  stroke: var(--pipe-hot);
+  stroke-width: 2;
+}
+
+.compressor-can {
+  fill: #323c47;
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+}
+
+.compressor-pulse {
+  stroke: var(--unit-stroke);
+  will-change: transform;
+}
+
+.compressor-pulse line {
+  stroke: #9aa6b2;
+  stroke-width: 1.5;
+}
+
+.txv-body,
+.txv-head {
+  fill: #3a4450;
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+}
+
+.rv-body {
+  fill: #323c47;
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+}
+
+.rv-slide {
+  fill: var(--pipe-hot);
+}
+
+.rv-port {
+  fill: var(--unit-stroke);
+}
+
+.diagram-label {
+  fill: var(--label);
+  font-size: 12px;
   font-family: inherit;
+}
+
+.layer-labels.is-hidden,
+.static-arrows.is-hidden {
+  visibility: hidden;
+}
+
+.scrub-control {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 0;
+}
+
+.scrub-control input {
+  flex: 1;
 }
 
 .control-panel {

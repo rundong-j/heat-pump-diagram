@@ -43,7 +43,10 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
 
     return m("aside.control-panel", [
       m("h1", "Heat pump cycle"),
-      m("p.lede", "Phase 0 foundation. The SVG scene must stay mounted when these controls redraw."),
+      m(
+        "p.lede",
+        "Phase 1: mini-split cooling loop with pauseable flow. Ducted layout, heating, and extra detail styles come later.",
+      ),
 
       m("section", [
         m("h2", "Scene stability"),

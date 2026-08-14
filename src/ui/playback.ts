@@ -1,5 +1,6 @@
 import m from "mithril";
 import type { PlaybackState } from "../model/types";
+import { restartPlayback, seekPlayback } from "../animation/timeline";
 
 export type PlaybackHudAttrs = {
   playback: PlaybackState;
@@ -33,7 +34,10 @@ export const PlaybackHud: m.Component<PlaybackHudAttrs> = {
         "button",
         {
           type: "button",
-          onclick: () => onChange({ ...playback, playing: false }),
+          onclick: () => {
+            restartPlayback();
+            onChange({ ...playback, playing: true });
+          },
         },
         "Restart",
       ),
@@ -51,6 +55,22 @@ export const PlaybackHud: m.Component<PlaybackHudAttrs> = {
           },
         }),
         m("span.speed-value", `${playback.speed.toFixed(2)}×`),
+      ]),
+      m("label.scrub-control", [
+        "Scrub",
+        m("input", {
+          type: "range",
+          min: "0",
+          max: "1",
+          step: "0.001",
+          value: "0",
+          "data-role": "scrubber",
+          oninput: (event: InputEvent) => {
+            const progress = Number((event.target as HTMLInputElement).value);
+            seekPlayback(progress);
+            onChange({ ...playback, playing: false });
+          },
+        }),
       ]),
     ]);
   },
