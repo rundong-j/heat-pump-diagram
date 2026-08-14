@@ -46,7 +46,7 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
       m("h1", "Heat pump cycle"),
       m(
         "p.lede",
-        "Mini-split cooling loop. Simple box is the default; icon, heating, and ducted layouts come next.",
+        "Mini-split heat pump. Heating reverses flow and swaps coil roles. Ducted layout comes next.",
       ),
 
       m("section", [

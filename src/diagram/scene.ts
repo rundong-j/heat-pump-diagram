@@ -1,7 +1,7 @@
 import m from "mithril";
 import type { DiagramConfig } from "../model/types";
 import { SceneAnimation } from "../animation/timeline";
-import { minisplitCoolingScene } from "./layouts/minisplit";
+import { minisplitScene } from "./layouts/minisplit";
 
 export type SceneAttrs = {
   config: DiagramConfig;
@@ -48,11 +48,12 @@ export const DiagramScene: m.Component<SceneAttrs> = {
       {
         viewBox: "0 0 960 540",
         role: "img",
-        "aria-label": "Mini-split heat pump cooling cycle",
+        "aria-label": `Mini-split heat pump ${vnode.attrs.config.mode} cycle`,
         "data-component-style": vnode.attrs.config.componentStyle,
         "data-indoor-side": vnode.attrs.config.indoorSide,
+        "data-mode": vnode.attrs.config.mode,
       },
-      minisplitCoolingScene(vnode.attrs.config),
+      minisplitScene(vnode.attrs.config),
     );
   },
 };

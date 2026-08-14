@@ -42,7 +42,7 @@ export class SceneAnimation {
     this.mm.add("(prefers-reduced-motion: no-preference)", () => {
       gsap.set(svg.querySelector("[data-role='particles']"), { autoAlpha: 1 });
       this.machines = buildMachineTimeline(svg);
-      this.flow = buildFlowTimeline(svg);
+      this.flow = buildFlowTimeline(svg, config.mode === "heating");
       this.applyPlayback(config.playback);
       return () => {
         this.machines?.kill();
@@ -68,27 +68,28 @@ export class SceneAnimation {
     this.svg.classList.toggle("labels-off", !config.overlays.labels);
     this.svg.classList.toggle("hide-reversing-valve", !config.showReversingValve);
     this.svg.dataset.componentStyle = config.componentStyle;
+    this.svg.dataset.mode = config.mode;
 
     const nextTopology = topologyKey(config);
     if (this.topology !== nextTopology) {
       this.topology = nextTopology;
-      this.rebuildFlow(config.playback);
+      this.rebuildFlow(config);
     } else {
       this.applyPlayback(config.playback);
     }
   }
 
-  private rebuildFlow(playback: PlaybackState): void {
+  private rebuildFlow(config: DiagramConfig): void {
     if (!this.svg) {
       return;
     }
 
     const progress = this.flow?.progress() ?? 0;
-    const wasPlaying = playback.playing;
+    const wasPlaying = config.playback.playing;
     this.flow?.kill();
-    this.flow = buildFlowTimeline(this.svg);
+    this.flow = buildFlowTimeline(this.svg, config.mode === "heating");
     this.flow.progress(progress);
-    this.applyPlayback({ ...playback, playing: wasPlaying });
+    this.applyPlayback({ ...config.playback, playing: wasPlaying });
   }
 
   applyPlayback(playback: PlaybackState): void {
@@ -133,7 +134,7 @@ export class SceneAnimation {
   }
 }
 
-function buildFlowTimeline(svg: SVGSVGElement): gsap.core.Timeline {
+function buildFlowTimeline(svg: SVGSVGElement, reversed: boolean): gsap.core.Timeline {
   const loop = svg.querySelector<SVGPathElement>("#refrigerant-loop");
   const particles = svg.querySelectorAll(".particle");
   const tl = gsap.timeline({
@@ -158,7 +159,7 @@ function buildFlowTimeline(svg: SVGSVGElement): gsap.core.Timeline {
           align: loop,
           alignOrigin: [0.5, 0.5],
           start: offset,
-          end: offset + 1,
+          end: reversed ? offset - 1 : offset + 1,
         },
       },
       0,

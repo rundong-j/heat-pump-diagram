@@ -150,14 +150,22 @@ body {
   fill: #8b98a5;
 }
 
-.evaporator-coil .coil-fins {
+.indoor-coil .coil-fins {
   stroke: var(--pipe-cold);
   stroke-width: 2;
 }
 
-.condenser-coil .coil-fins {
+.outdoor-coil .coil-fins {
   stroke: var(--pipe-hot);
   stroke-width: 2;
+}
+
+.diagram-scene[data-mode="heating"] .indoor-coil .coil-fins {
+  stroke: var(--pipe-hot);
+}
+
+.diagram-scene[data-mode="heating"] .outdoor-coil .coil-fins {
+  stroke: var(--pipe-cold);
 }
 
 .compressor-can {
@@ -200,6 +208,20 @@ body {
 .diagram-label {
   fill: var(--label);
   font-size: 12px;
+  font-family: inherit;
+}
+
+.overlay-badge-bg {
+  fill: #121417;
+  stroke: #4a5561;
+  stroke-width: 1;
+}
+
+.overlay-badge-text {
+  fill: var(--label);
+  stroke: none;
+  font-size: 11px;
+  font-weight: 600;
   font-family: inherit;
 }
 

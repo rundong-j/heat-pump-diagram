@@ -38,10 +38,13 @@ export function expansionValveIcon(): m.Children {
   ];
 }
 
-export function reversingValveIcon(): m.Children {
+export function reversingValveIcon(heating = false): m.Children {
   return [
     m("rect.rv-body", { x: -22, y: -16, width: 44, height: 32, rx: 4 }),
-    m("path.rv-slide", { d: "M-12,-6 L4,-6 L12,6 L-4,6 Z" }),
+    m("path.rv-slide", {
+      d: "M-12,-6 L4,-6 L12,6 L-4,6 Z",
+      transform: heating ? "scale(-1 1)" : undefined,
+    }),
     m("circle.rv-port", { cx: 0, cy: -16, r: 3 }),
     m("circle.rv-port", { cx: 0, cy: 16, r: 3 }),
     m("circle.rv-port", { cx: -22, cy: 0, r: 3 }),

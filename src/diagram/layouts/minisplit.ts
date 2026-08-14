@@ -1,4 +1,12 @@
 import m from "mithril";
+import {
+  badgeText,
+  coilLabel,
+  CYCLE_READINGS,
+  heatFlowLabel,
+  indoorCoilRole,
+  type StationId,
+} from "../../model/cycleData";
 import type { DiagramConfig } from "../../model/types";
 import {
   coilFins,
@@ -10,19 +18,24 @@ import {
   reversingValveIcon,
 } from "../icons";
 
+type Point = { x: number; y: number };
+
 type CircuitLayout = {
   loop: string;
   high: string;
   low: string;
-  evaporator: { x: number; y: number };
-  condenser: { x: number; y: number };
-  compressor: { x: number; y: number };
-  expansion: { x: number; y: number };
-  reversingValve: { x: number; y: number };
+  indoorCoil: Point;
+  outdoorCoil: Point;
+  compressor: Point;
+  expansion: Point;
+  reversingValve: Point;
   arrows: { x: number; y: number; rotation: number }[];
+  stations: Record<StationId, Point>;
 };
 
 const VIEWBOX_WIDTH = 960;
+
+const STATION_ORDER: StationId[] = ["discharge", "liquid", "twoPhase", "suction"];
 
 function flipX(x: number): number {
   return VIEWBOX_WIDTH - x;
@@ -45,8 +58,42 @@ function flipRotation(rotation: number): number {
   return rotation;
 }
 
-function flipPoint(point: { x: number; y: number }): { x: number; y: number } {
+function flipPoint(point: Point): Point {
   return { x: flipX(point.x), y: point.y };
+}
+
+function reverseArrows(
+  arrows: CircuitLayout["arrows"],
+): CircuitLayout["arrows"] {
+  return arrows.map((arrow) => ({
+    ...arrow,
+    rotation: arrow.rotation + 180,
+  }));
+}
+
+function assignStations(
+  corners: {
+    indoorTop: Point;
+    outdoorTop: Point;
+    indoorBottom: Point;
+    outdoorBottom: Point;
+  },
+  heating: boolean,
+): Record<StationId, Point> {
+  if (heating) {
+    return {
+      discharge: corners.indoorTop,
+      liquid: corners.indoorBottom,
+      twoPhase: corners.outdoorBottom,
+      suction: corners.outdoorTop,
+    };
+  }
+  return {
+    discharge: corners.outdoorTop,
+    liquid: corners.outdoorBottom,
+    twoPhase: corners.indoorBottom,
+    suction: corners.indoorTop,
+  };
 }
 
 function mirrorLayout(layout: CircuitLayout): CircuitLayout {
@@ -54,8 +101,8 @@ function mirrorLayout(layout: CircuitLayout): CircuitLayout {
     loop: flipPath(layout.loop),
     high: flipPath(layout.high),
     low: flipPath(layout.low),
-    evaporator: flipPoint(layout.evaporator),
-    condenser: flipPoint(layout.condenser),
+    indoorCoil: flipPoint(layout.indoorCoil),
+    outdoorCoil: flipPoint(layout.outdoorCoil),
     compressor: flipPoint(layout.compressor),
     expansion: flipPoint(layout.expansion),
     reversingValve: flipPoint(layout.reversingValve),
@@ -64,73 +111,135 @@ function mirrorLayout(layout: CircuitLayout): CircuitLayout {
       y: arrow.y,
       rotation: flipRotation(arrow.rotation),
     })),
+    stations: {
+      discharge: flipPoint(layout.stations.discharge),
+      liquid: flipPoint(layout.stations.liquid),
+      twoPhase: flipPoint(layout.stations.twoPhase),
+      suction: flipPoint(layout.stations.suction),
+    },
+  };
+}
+
+function reversingValveLayout(heating: boolean): CircuitLayout {
+  return {
+    loop: "M690,370 V250 H840 V405 H145 V220 H720 V370 H690 Z",
+    high: heating
+      ? "M690,370 H720 V220 H145 V405 H400"
+      : "M690,370 V250 H840 V405 H400",
+    low: heating
+      ? "M400,405 H840 V250 H690"
+      : "M400,405 H145 V220 H720 V370 H690",
+    indoorCoil: { x: 145, y: 280 },
+    outdoorCoil: { x: 840, y: 328 },
+    compressor: { x: 705, y: 370 },
+    expansion: { x: 400, y: 405 },
+    reversingValve: { x: 700, y: 250 },
+    arrows: [
+      { x: 690, y: 310, rotation: -90 },
+      { x: 840, y: 328, rotation: 90 },
+      { x: 560, y: 405, rotation: 180 },
+      { x: 145, y: 312, rotation: -90 },
+      { x: 400, y: 220, rotation: 0 },
+      { x: 720, y: 310, rotation: 90 },
+    ],
+    stations: assignStations(
+      {
+        indoorTop: { x: 320, y: 204 },
+        outdoorTop: { x: 840, y: 210 },
+        indoorBottom: { x: 145, y: 460 },
+        outdoorBottom: { x: 700, y: 460 },
+      },
+      heating,
+    ),
+  };
+}
+
+function simpleBoxLayout(heating: boolean): CircuitLayout {
+  return {
+    loop: "M660,250 H840 V405 H145 V250 H660 Z",
+    high: heating
+      ? "M660,250 H145 V405 H313"
+      : "M660,250 H840 V405 H313",
+    low: heating
+      ? "M313,405 H840 V250 H660"
+      : "M313,405 H145 V250 H660",
+    indoorCoil: { x: 145, y: 328 },
+    outdoorCoil: { x: 840, y: 328 },
+    compressor: { x: 660, y: 250 },
+    expansion: { x: 313, y: 405 },
+    reversingValve: { x: 700, y: 250 },
+    arrows: [
+      { x: 400, y: 250, rotation: 0 },
+      { x: 840, y: 328, rotation: 90 },
+      { x: 560, y: 405, rotation: 180 },
+      { x: 145, y: 328, rotation: -90 },
+    ],
+    stations: assignStations(
+      {
+        indoorTop: { x: 400, y: 210 },
+        outdoorTop: { x: 840, y: 210 },
+        indoorBottom: { x: 145, y: 460 },
+        outdoorBottom: { x: 700, y: 460 },
+      },
+      heating,
+    ),
+  };
+}
+
+function iconLayout(heating: boolean): CircuitLayout {
+  return {
+    loop: "M700,390 V250 H840 V405 H145 V220 H700 V390 Z",
+    high: heating
+      ? "M700,390 V220 H145 V405 H400"
+      : "M700,390 V250 H840 V405 H400",
+    low: heating
+      ? "M400,405 H840 V250 H700"
+      : "M400,405 H145 V220 H700 V390",
+    indoorCoil: { x: 145, y: 280 },
+    outdoorCoil: { x: 840, y: 328 },
+    compressor: { x: 705, y: 370 },
+    expansion: { x: 400, y: 405 },
+    reversingValve: { x: 700, y: 250 },
+    arrows: [
+      { x: 700, y: 320, rotation: -90 },
+      { x: 840, y: 328, rotation: 90 },
+      { x: 560, y: 405, rotation: 180 },
+      { x: 145, y: 312, rotation: -90 },
+      { x: 400, y: 220, rotation: 0 },
+    ],
+    stations: assignStations(
+      {
+        indoorTop: { x: 320, y: 204 },
+        outdoorTop: { x: 840, y: 210 },
+        indoorBottom: { x: 145, y: 460 },
+        outdoorBottom: { x: 700, y: 460 },
+      },
+      heating,
+    ),
   };
 }
 
 export function circuitLayout(config: DiagramConfig): CircuitLayout {
+  const heating = config.mode === "heating";
   let layout: CircuitLayout;
 
   if (config.showReversingValve) {
-    layout = {
-      loop: "M690,370 V250 H840 V405 H145 V220 H720 V370 H690 Z",
-      high: "M690,370 V250 H840 V405 H400",
-      low: "M400,405 H145 V220 H720 V370 H690",
-      evaporator: { x: 145, y: 280 },
-      condenser: { x: 840, y: 328 },
-      compressor: { x: 705, y: 370 },
-      expansion: { x: 400, y: 405 },
-      reversingValve: { x: 700, y: 250 },
-      arrows: [
-        { x: 690, y: 310, rotation: -90 },
-        { x: 840, y: 328, rotation: 90 },
-        { x: 560, y: 405, rotation: 180 },
-        { x: 145, y: 312, rotation: -90 },
-        { x: 400, y: 220, rotation: 0 },
-        { x: 720, y: 310, rotation: 90 },
-      ],
-    };
+    layout = reversingValveLayout(heating);
   } else if (config.componentStyle === "simpleBox") {
-    layout = {
-      loop: "M660,250 H840 V405 H145 V250 H660 Z",
-      high: "M660,250 H840 V405 H313",
-      low: "M313,405 H145 V250 H660",
-      evaporator: { x: 145, y: 328 },
-      condenser: { x: 840, y: 328 },
-      compressor: { x: 660, y: 250 },
-      expansion: { x: 313, y: 405 },
-      reversingValve: { x: 700, y: 250 },
-      arrows: [
-        { x: 400, y: 250, rotation: 0 },
-        { x: 840, y: 328, rotation: 90 },
-        { x: 560, y: 405, rotation: 180 },
-        { x: 145, y: 328, rotation: -90 },
-      ],
-    };
+    layout = simpleBoxLayout(heating);
   } else {
-    layout = {
-      loop: "M700,390 V250 H840 V405 H145 V220 H700 V390 Z",
-      high: "M700,390 V250 H840 V405 H400",
-      low: "M400,405 H145 V220 H700 V390",
-      evaporator: { x: 145, y: 280 },
-      condenser: { x: 840, y: 328 },
-      compressor: { x: 705, y: 370 },
-      expansion: { x: 400, y: 405 },
-      reversingValve: { x: 700, y: 250 },
-      arrows: [
-        { x: 700, y: 320, rotation: -90 },
-        { x: 840, y: 328, rotation: 90 },
-        { x: 560, y: 405, rotation: 180 },
-        { x: 145, y: 312, rotation: -90 },
-        { x: 400, y: 220, rotation: 0 },
-      ],
-    };
+    layout = iconLayout(heating);
+  }
+
+  if (heating) {
+    layout = { ...layout, arrows: reverseArrows(layout.arrows) };
   }
 
   return config.indoorSide === "right" ? mirrorLayout(layout) : layout;
 }
 
 export function topologyKey(config: DiagramConfig): string {
-  return `${config.showReversingValve}:${config.componentStyle}:${config.indoorSide}`;
+  return `${config.showReversingValve}:${config.componentStyle}:${config.indoorSide}:${config.mode}`;
 }
 
 const PARTICLE_COUNT = 8;
@@ -164,8 +273,30 @@ function label(
   );
 }
 
-export function minisplitCoolingScene(config: DiagramConfig): m.Children {
+function overlayBadge(text: string, x: number, y: number, key: string): m.Vnode {
+  const width = Math.max(72, text.length * 6.6 + 16);
+  return m("g.overlay-badge", { key, transform: `translate(${x} ${y})` }, [
+    m("rect.overlay-badge-bg", {
+      x: -width / 2,
+      y: -11,
+      width,
+      height: 22,
+      rx: 4,
+    }),
+    m(
+      "text.overlay-badge-text",
+      { "text-anchor": "middle", dy: "0.35em" },
+      text,
+    ),
+  ]);
+}
+
+export function minisplitScene(config: DiagramConfig): m.Children {
   const circuit = circuitLayout(config);
+  const heating = config.mode === "heating";
+  const indoorRole = indoorCoilRole(config.mode);
+  const outdoorRole = indoorRole === "evaporator" ? "condenser" : "evaporator";
+  const readings = CYCLE_READINGS[config.mode];
   const flip = config.indoorSide === "right";
   const placeX = (x: number) => (flip ? flipX(x) : x);
   const placeAnchor = (anchor: string) => {
@@ -180,6 +311,15 @@ export function minisplitCoolingScene(config: DiagramConfig): m.Children {
     }
     return anchor;
   };
+
+  const overlayBadges = STATION_ORDER.flatMap((station) => {
+    const text = badgeText(readings[station], config.overlays);
+    if (!text) {
+      return [];
+    }
+    const point = circuit.stations[station];
+    return [overlayBadge(text, point.x, point.y, `badge-${station}`)];
+  });
 
   return [
     m("g.layer-background", { key: "background" }, [
@@ -197,7 +337,7 @@ export function minisplitCoolingScene(config: DiagramConfig): m.Children {
       m(
         "text.scene-caption",
         { "data-role": "caption", x: 480, y: 28, "text-anchor": "middle" },
-        "Mini-split heat pump · cooling",
+        `Mini-split heat pump · ${heating ? "heating" : "cooling"}`,
       ),
     ]),
 
@@ -247,7 +387,7 @@ export function minisplitCoolingScene(config: DiagramConfig): m.Children {
           m("rect.unit-body", { x: 70, y: 185, width: 250, height: 145, rx: 14 }),
           m("rect.unit-face", { x: 86, y: 204, width: 148, height: 108, rx: 8 }),
           m(
-            "g.evaporator-coil",
+            "g.indoor-coil",
             coilFins({
               x: 98,
               y: 218,
@@ -266,7 +406,7 @@ export function minisplitCoolingScene(config: DiagramConfig): m.Children {
           m("circle.fan-shroud", { cx: 755, cy: 185, r: 52 }),
           m("g.outdoor-fan", { transform: "translate(755 185)" }, fanIcon(40)),
           m(
-            "g.condenser-coil",
+            "g.outdoor-coil",
             coilFins({
               x: 800,
               y: 248,
@@ -280,33 +420,37 @@ export function minisplitCoolingScene(config: DiagramConfig): m.Children {
           m(
             "g.reversing-valve",
             { transform: "translate(700 250)" },
-            reversingValveIcon(),
+            reversingValveIcon(heating),
           ),
         ]),
 
         m(
           "g.expansion-valve",
-          { transform: "translate(400 405)" },
+          {
+            transform: heating
+              ? "translate(400 405) scale(-1 1)"
+              : "translate(400 405)",
+          },
           expansionValveIcon(),
         ),
       ]),
 
       m("g.simple-box-equipment", { key: "simple-box-equipment" }, [
         componentBox({
-          id: "evaporator",
-          x: circuit.evaporator.x,
-          y: circuit.evaporator.y,
+          id: "indoorCoil",
+          x: circuit.indoorCoil.x,
+          y: circuit.indoorCoil.y,
           width: 132,
           height: 52,
-          label: "Evaporator",
+          label: coilLabel(indoorRole),
         }),
         componentBox({
-          id: "condenser",
-          x: circuit.condenser.x,
-          y: circuit.condenser.y,
+          id: "outdoorCoil",
+          x: circuit.outdoorCoil.x,
+          y: circuit.outdoorCoil.y,
           width: 132,
           height: 52,
-          label: "Condenser",
+          label: coilLabel(outdoorRole),
         }),
         componentBox({
           id: "compressor",
@@ -338,9 +482,19 @@ export function minisplitCoolingScene(config: DiagramConfig): m.Children {
 
     m("g.layer-labels", { key: "labels", "data-role": "labels" }, [
       label("Indoor unit", placeX(195), 172, placeAnchor("middle")),
-      label("Evaporator", placeX(160), 352, placeAnchor("middle")),
+      label(
+        coilLabel(indoorRole),
+        placeX(160),
+        352,
+        placeAnchor("middle"),
+      ),
       label("Outdoor unit", placeX(755), 108, placeAnchor("middle")),
-      label("Condenser", placeX(855), 328, placeAnchor("middle")),
+      label(
+        coilLabel(outdoorRole),
+        placeX(855),
+        328,
+        placeAnchor("middle"),
+      ),
       label("Compressor", placeX(700), 452, placeAnchor("middle")),
       label(
         "Reversing valve",
@@ -352,8 +506,24 @@ export function minisplitCoolingScene(config: DiagramConfig): m.Children {
       label("Expansion valve", placeX(400), 438, placeAnchor("middle")),
       label("Vapor line", placeX(320), 206, placeAnchor("middle")),
       label("Liquid line", placeX(250), 392, placeAnchor("middle")),
-      label("Heat absorbed", placeX(195), 455, placeAnchor("middle")),
-      label("Heat rejected", placeX(755), 475, placeAnchor("middle")),
+      label(
+        heatFlowLabel(indoorRole),
+        placeX(195),
+        455,
+        placeAnchor("middle"),
+      ),
+      label(
+        heatFlowLabel(outdoorRole),
+        placeX(755),
+        475,
+        placeAnchor("middle"),
+      ),
     ]),
+
+    m(
+      "g.layer-overlays",
+      { key: "overlays", "data-role": "overlays" },
+      overlayBadges,
+    ),
   ];
 }

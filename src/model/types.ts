@@ -31,11 +31,11 @@ export type DiagramConfig = {
 export function createDefaultConfig(): DiagramConfig {
   return {
     systemType: "minisplit",
-    mode: "cooling",
+    mode: "heating",
     componentStyle: "simpleBox",
     background: "none",
     showReversingValve: false,
-    indoorSide: "left",
+    indoorSide: "right",
     overlays: {
       labels: true,
       pressure: false,
