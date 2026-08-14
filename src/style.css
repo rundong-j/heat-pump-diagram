@@ -211,6 +211,7 @@ body {
 
 .box-label {
   fill: var(--label);
+  stroke: none;
   font-size: 13px;
   font-family: inherit;
 }
@@ -227,6 +228,12 @@ body {
   visibility: hidden;
 }
 
+.diagram-scene[data-component-style="simpleBox"] .layer-labels {
+  visibility: hidden;
+}
+
+.layer-labels.is-hidden,
+.static-arrows.is-hidden,
 .hide-reversing-valve .reversing-valve,
 .hide-reversing-valve .reversing-valve-label,
 .hide-reversing-valve [data-component="reversingValve"] {

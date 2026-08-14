@@ -1,4 +1,5 @@
 import m from "mithril";
+import type { DiagramConfig } from "../../model/types";
 import {
   coilFins,
   componentBox,
@@ -9,11 +10,128 @@ import {
   reversingValveIcon,
 } from "../icons";
 
-export const REFRIGERANT_LOOP_PATH =
-  "M690,350 V250 H840 V405 H145 V220 H720 V350 H690 Z";
+type CircuitLayout = {
+  loop: string;
+  high: string;
+  low: string;
+  evaporator: { x: number; y: number };
+  condenser: { x: number; y: number };
+  compressor: { x: number; y: number };
+  expansion: { x: number; y: number };
+  reversingValve: { x: number; y: number };
+  arrows: { x: number; y: number; rotation: number }[];
+};
 
-export const HIGH_PRESSURE_PATH = "M690,350 V250 H840 V405 H400";
-export const LOW_PRESSURE_PATH = "M400,405 H145 V220 H720 V350 H690";
+const VIEWBOX_WIDTH = 960;
+
+function flipX(x: number): number {
+  return VIEWBOX_WIDTH - x;
+}
+
+function flipPath(d: string): string {
+  return d.replace(
+    /([MH])(-?\d*\.?\d+)/g,
+    (_match, cmd: string, num: string) => `${cmd}${flipX(Number(num))}`,
+  );
+}
+
+function flipRotation(rotation: number): number {
+  if (rotation === 0) {
+    return 180;
+  }
+  if (rotation === 180) {
+    return 0;
+  }
+  return rotation;
+}
+
+function flipPoint(point: { x: number; y: number }): { x: number; y: number } {
+  return { x: flipX(point.x), y: point.y };
+}
+
+function mirrorLayout(layout: CircuitLayout): CircuitLayout {
+  return {
+    loop: flipPath(layout.loop),
+    high: flipPath(layout.high),
+    low: flipPath(layout.low),
+    evaporator: flipPoint(layout.evaporator),
+    condenser: flipPoint(layout.condenser),
+    compressor: flipPoint(layout.compressor),
+    expansion: flipPoint(layout.expansion),
+    reversingValve: flipPoint(layout.reversingValve),
+    arrows: layout.arrows.map((arrow) => ({
+      x: flipX(arrow.x),
+      y: arrow.y,
+      rotation: flipRotation(arrow.rotation),
+    })),
+  };
+}
+
+export function circuitLayout(config: DiagramConfig): CircuitLayout {
+  let layout: CircuitLayout;
+
+  if (config.showReversingValve) {
+    layout = {
+      loop: "M690,370 V250 H840 V405 H145 V220 H720 V370 H690 Z",
+      high: "M690,370 V250 H840 V405 H400",
+      low: "M400,405 H145 V220 H720 V370 H690",
+      evaporator: { x: 145, y: 280 },
+      condenser: { x: 840, y: 328 },
+      compressor: { x: 705, y: 370 },
+      expansion: { x: 400, y: 405 },
+      reversingValve: { x: 700, y: 250 },
+      arrows: [
+        { x: 690, y: 310, rotation: -90 },
+        { x: 840, y: 328, rotation: 90 },
+        { x: 560, y: 405, rotation: 180 },
+        { x: 145, y: 312, rotation: -90 },
+        { x: 400, y: 220, rotation: 0 },
+        { x: 720, y: 310, rotation: 90 },
+      ],
+    };
+  } else if (config.componentStyle === "simpleBox") {
+    layout = {
+      loop: "M660,250 H840 V405 H145 V250 H660 Z",
+      high: "M660,250 H840 V405 H313",
+      low: "M313,405 H145 V250 H660",
+      evaporator: { x: 145, y: 328 },
+      condenser: { x: 840, y: 328 },
+      compressor: { x: 660, y: 250 },
+      expansion: { x: 313, y: 405 },
+      reversingValve: { x: 700, y: 250 },
+      arrows: [
+        { x: 400, y: 250, rotation: 0 },
+        { x: 840, y: 328, rotation: 90 },
+        { x: 560, y: 405, rotation: 180 },
+        { x: 145, y: 328, rotation: -90 },
+      ],
+    };
+  } else {
+    layout = {
+      loop: "M700,390 V250 H840 V405 H145 V220 H700 V390 Z",
+      high: "M700,390 V250 H840 V405 H400",
+      low: "M400,405 H145 V220 H700 V390",
+      evaporator: { x: 145, y: 280 },
+      condenser: { x: 840, y: 328 },
+      compressor: { x: 705, y: 370 },
+      expansion: { x: 400, y: 405 },
+      reversingValve: { x: 700, y: 250 },
+      arrows: [
+        { x: 700, y: 320, rotation: -90 },
+        { x: 840, y: 328, rotation: 90 },
+        { x: 560, y: 405, rotation: 180 },
+        { x: 145, y: 312, rotation: -90 },
+        { x: 400, y: 220, rotation: 0 },
+      ],
+    };
+  }
+
+  return config.indoorSide === "right" ? mirrorLayout(layout) : layout;
+}
+
+export function topologyKey(config: DiagramConfig): string {
+  return `${config.showReversingValve}:${config.componentStyle}:${config.indoorSide}`;
+}
 
 const PARTICLE_COUNT = 8;
 
@@ -46,18 +164,34 @@ function label(
   );
 }
 
-export function minisplitCoolingScene(): m.Children {
+export function minisplitCoolingScene(config: DiagramConfig): m.Children {
+  const circuit = circuitLayout(config);
+  const flip = config.indoorSide === "right";
+  const placeX = (x: number) => (flip ? flipX(x) : x);
+  const placeAnchor = (anchor: string) => {
+    if (!flip) {
+      return anchor;
+    }
+    if (anchor === "end") {
+      return "start";
+    }
+    if (anchor === "start") {
+      return "end";
+    }
+    return anchor;
+  };
+
   return [
     m("g.layer-background", { key: "background" }, [
       m("line.wall", { x1: 480, y1: 72, x2: 480, y2: 500 }),
       m(
         "text.zone-title",
-        { x: 210, y: 54, "text-anchor": "middle" },
+        { x: placeX(210), y: 54, "text-anchor": "middle" },
         "Indoor",
       ),
       m(
         "text.zone-title",
-        { x: 750, y: 54, "text-anchor": "middle" },
+        { x: placeX(750), y: 54, "text-anchor": "middle" },
         "Outdoor",
       ),
       m(
@@ -69,30 +203,46 @@ export function minisplitCoolingScene(): m.Children {
 
     m("g.layer-circuit", { key: "circuit" }, [
       m("path.pipe.pipe-high", {
-        d: HIGH_PRESSURE_PATH,
+        key: "pipe-high",
+        d: circuit.high,
         fill: "none",
       }),
       m("path.pipe.pipe-low", {
-        d: LOW_PRESSURE_PATH,
+        key: "pipe-low",
+        d: circuit.low,
         fill: "none",
       }),
       m("path.refrigerant-loop", {
+        key: "refrigerant-loop",
         id: "refrigerant-loop",
-        d: REFRIGERANT_LOOP_PATH,
+        d: circuit.loop,
         fill: "none",
       }),
-      m("g.static-arrows", { "data-role": "static-arrows" }, [
-        flowArrow(690, 305, -90),
-        flowArrow(840, 328, 90),
-        flowArrow(560, 405, 180),
-        flowArrow(145, 312, -90),
-        flowArrow(400, 220, 0),
-        flowArrow(720, 300, 90),
-      ]),
     ]),
 
+    m(
+      "g.layer-particles",
+      { key: "particles", "data-role": "particles" },
+      particles(),
+    ),
+
+    m(
+      "g.layer-arrows",
+      { key: "arrows" },
+      m(
+        "g.static-arrows",
+        { key: "static-arrows", "data-role": "static-arrows" },
+        circuit.arrows.map((arrow, index) =>
+          flowArrow(arrow.x, arrow.y, arrow.rotation, `arrow-${index}`),
+        ),
+      ),
+    ),
+
     m("g.layer-equipment", { key: "equipment" }, [
-      m("g.icon-equipment", { key: "icon-equipment" }, [
+      m("g.icon-equipment", {
+        key: "icon-equipment",
+        transform: flip ? `translate(${VIEWBOX_WIDTH} 0) scale(-1 1)` : undefined,
+      }, [
         m("g.indoor-unit", [
           m("rect.unit-body", { x: 70, y: 185, width: 250, height: 145, rx: 14 }),
           m("rect.unit-face", { x: 86, y: 204, width: 148, height: 108, rx: 8 }),
@@ -144,24 +294,24 @@ export function minisplitCoolingScene(): m.Children {
       m("g.simple-box-equipment", { key: "simple-box-equipment" }, [
         componentBox({
           id: "evaporator",
-          x: 145,
-          y: 280,
+          x: circuit.evaporator.x,
+          y: circuit.evaporator.y,
           width: 132,
           height: 52,
           label: "Evaporator",
         }),
         componentBox({
           id: "condenser",
-          x: 840,
-          y: 328,
+          x: circuit.condenser.x,
+          y: circuit.condenser.y,
           width: 132,
           height: 52,
           label: "Condenser",
         }),
         componentBox({
           id: "compressor",
-          x: 705,
-          y: 370,
+          x: circuit.compressor.x,
+          y: circuit.compressor.y,
           width: 132,
           height: 52,
           label: "Compressor",
@@ -169,16 +319,16 @@ export function minisplitCoolingScene(): m.Children {
         }),
         componentBox({
           id: "expansionValve",
-          x: 400,
-          y: 405,
+          x: circuit.expansion.x,
+          y: circuit.expansion.y,
           width: 150,
           height: 52,
           label: "Expansion valve",
         }),
         componentBox({
           id: "reversingValve",
-          x: 700,
-          y: 250,
+          x: circuit.reversingValve.x,
+          y: circuit.reversingValve.y,
           width: 150,
           height: 52,
           label: "Reversing valve",
@@ -186,24 +336,24 @@ export function minisplitCoolingScene(): m.Children {
       ]),
     ]),
 
-    m(
-      "g.layer-particles",
-      { key: "particles", "data-role": "particles" },
-      particles(),
-    ),
-
     m("g.layer-labels", { key: "labels", "data-role": "labels" }, [
-      label("Indoor unit", 195, 172),
-      label("Evaporator", 160, 352),
-      label("Outdoor unit", 755, 108),
-      label("Condenser", 855, 328),
-      label("Compressor", 700, 452),
-      label("Reversing valve", 618, 246, "end", "reversing-valve-label"),
-      label("Expansion valve", 400, 438),
-      label("Vapor line", 320, 206),
-      label("Liquid line", 250, 392),
-      label("Heat absorbed", 195, 455),
-      label("Heat rejected", 755, 475),
+      label("Indoor unit", placeX(195), 172, placeAnchor("middle")),
+      label("Evaporator", placeX(160), 352, placeAnchor("middle")),
+      label("Outdoor unit", placeX(755), 108, placeAnchor("middle")),
+      label("Condenser", placeX(855), 328, placeAnchor("middle")),
+      label("Compressor", placeX(700), 452, placeAnchor("middle")),
+      label(
+        "Reversing valve",
+        placeX(618),
+        246,
+        placeAnchor("end"),
+        "reversing-valve-label",
+      ),
+      label("Expansion valve", placeX(400), 438, placeAnchor("middle")),
+      label("Vapor line", placeX(320), 206, placeAnchor("middle")),
+      label("Liquid line", placeX(250), 392, placeAnchor("middle")),
+      label("Heat absorbed", placeX(195), 455, placeAnchor("middle")),
+      label("Heat rejected", placeX(755), 475, placeAnchor("middle")),
     ]),
   ];
 }

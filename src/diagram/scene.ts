@@ -25,7 +25,7 @@ export const DiagramScene: m.Component<SceneAttrs> = {
     const svg = vnode.dom as SVGSVGElement;
     svg.dataset.mountId = String(mountCount);
     animation = new SceneAnimation();
-    animation.attach(svg, vnode.attrs.config.playback);
+    animation.attach(svg, vnode.attrs.config);
     animation.applyConfig(vnode.attrs.config);
     applyHighlight(svg, vnode.attrs.debugHighlight);
     m.redraw();
@@ -50,8 +50,9 @@ export const DiagramScene: m.Component<SceneAttrs> = {
         role: "img",
         "aria-label": "Mini-split heat pump cooling cycle",
         "data-component-style": vnode.attrs.config.componentStyle,
+        "data-indoor-side": vnode.attrs.config.indoorSide,
       },
-      minisplitCoolingScene(),
+      minisplitCoolingScene(vnode.attrs.config),
     );
   },
 };

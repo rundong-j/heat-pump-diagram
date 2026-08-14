@@ -2,6 +2,7 @@ export type SystemType = "minisplit" | "ducted";
 export type CycleMode = "cooling" | "heating";
 export type ComponentStyle = "simpleBox" | "icon" | "sketch" | "crossSection";
 export type BackgroundStyle = "none" | "house";
+export type IndoorSide = "left" | "right";
 
 export type OverlayToggles = {
   labels: boolean;
@@ -22,6 +23,7 @@ export type DiagramConfig = {
   componentStyle: ComponentStyle;
   background: BackgroundStyle;
   showReversingValve: boolean;
+  indoorSide: IndoorSide;
   overlays: OverlayToggles;
   playback: PlaybackState;
 };
@@ -32,7 +34,8 @@ export function createDefaultConfig(): DiagramConfig {
     mode: "cooling",
     componentStyle: "simpleBox",
     background: "none",
-    showReversingValve: true,
+    showReversingValve: false,
+    indoorSide: "left",
     overlays: {
       labels: true,
       pressure: false,

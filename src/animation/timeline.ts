@@ -1,10 +1,11 @@
 import gsap from "gsap";
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 import type { DiagramConfig, PlaybackState } from "../model/types";
+import { topologyKey } from "../diagram/layouts/minisplit";
 
 gsap.registerPlugin(MotionPathPlugin);
 
-const LOOP_SECONDS = 7;
+const LOOP_SECONDS = 28;
 
 let active: SceneAnimation | null = null;
 
@@ -21,10 +22,12 @@ export class SceneAnimation {
   private flow: gsap.core.Timeline | null = null;
   private machines: gsap.core.Timeline | null = null;
   private svg: SVGSVGElement | null = null;
+  private topology: string | null = null;
 
-  attach(svg: SVGSVGElement, playback: PlaybackState): void {
+  attach(svg: SVGSVGElement, config: DiagramConfig): void {
     this.destroy();
     this.svg = svg;
+    this.topology = topologyKey(config);
     active = this;
     this.mm = gsap.matchMedia();
 
@@ -40,7 +43,7 @@ export class SceneAnimation {
       gsap.set(svg.querySelector("[data-role='particles']"), { autoAlpha: 1 });
       this.machines = buildMachineTimeline(svg);
       this.flow = buildFlowTimeline(svg);
-      this.applyPlayback(playback);
+      this.applyPlayback(config.playback);
       return () => {
         this.machines?.kill();
         this.flow?.kill();
@@ -66,7 +69,26 @@ export class SceneAnimation {
     this.svg.classList.toggle("hide-reversing-valve", !config.showReversingValve);
     this.svg.dataset.componentStyle = config.componentStyle;
 
-    this.applyPlayback(config.playback);
+    const nextTopology = topologyKey(config);
+    if (this.topology !== nextTopology) {
+      this.topology = nextTopology;
+      this.rebuildFlow(config.playback);
+    } else {
+      this.applyPlayback(config.playback);
+    }
+  }
+
+  private rebuildFlow(playback: PlaybackState): void {
+    if (!this.svg) {
+      return;
+    }
+
+    const progress = this.flow?.progress() ?? 0;
+    const wasPlaying = playback.playing;
+    this.flow?.kill();
+    this.flow = buildFlowTimeline(this.svg);
+    this.flow.progress(progress);
+    this.applyPlayback({ ...playback, playing: wasPlaying });
   }
 
   applyPlayback(playback: PlaybackState): void {
@@ -101,6 +123,7 @@ export class SceneAnimation {
     this.flow = null;
     this.machines = null;
     this.svg = null;
+    this.topology = null;
   }
 
   private timelines(): gsap.core.Timeline[] {
@@ -156,7 +179,7 @@ function buildMachineTimeline(svg: SVGSVGElement): gsap.core.Timeline {
       outdoorBlades,
       {
         rotation: 360,
-        duration: 0.8,
+        duration: 3.2,
         ease: "none",
         repeat: -1,
         transformOrigin: "0px 0px",
@@ -170,7 +193,7 @@ function buildMachineTimeline(svg: SVGSVGElement): gsap.core.Timeline {
       indoorBlades,
       {
         rotation: 360,
-        duration: 1.35,
+        duration: 5.4,
         ease: "none",
         repeat: -1,
         transformOrigin: "0px 0px",
@@ -184,7 +207,7 @@ function buildMachineTimeline(svg: SVGSVGElement): gsap.core.Timeline {
       compressor,
       {
         scale: 1.06,
-        duration: 0.4,
+        duration: 1.6,
         ease: "sine.inOut",
         yoyo: true,
         repeat: -1,

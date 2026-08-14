@@ -4,6 +4,7 @@ import type {
   ComponentStyle,
   CycleMode,
   DiagramConfig,
+  IndoorSide,
   OverlayToggles,
   SystemType,
 } from "../model/types";
@@ -147,6 +148,24 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
             [
               m("option", { value: "none" }, "None"),
               m("option", { value: "house" }, "House context"),
+            ],
+          ),
+        ]),
+        m("label", [
+          "Indoor unit",
+          m(
+            "select",
+            {
+              value: config.indoorSide,
+              onchange: (event: Event) => {
+                const indoorSide = (event.target as HTMLSelectElement)
+                  .value as IndoorSide;
+                onConfigChange({ ...config, indoorSide });
+              },
+            },
+            [
+              m("option", { value: "left" }, "Left"),
+              m("option", { value: "right" }, "Right"),
             ],
           ),
         ]),

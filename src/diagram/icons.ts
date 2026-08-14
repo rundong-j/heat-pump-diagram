@@ -74,8 +74,14 @@ export function coilFins(opts: {
   return m("g.coil-fins", lines);
 }
 
-export function flowArrow(x: number, y: number, rotation: number): m.Vnode {
+export function flowArrow(
+  x: number,
+  y: number,
+  rotation: number,
+  key?: string,
+): m.Vnode {
   return m("polygon.flow-arrow", {
+    key,
     points: "-9,-6 11,0 -9,6",
     transform: `translate(${x} ${y}) rotate(${rotation})`,
   });
@@ -112,6 +118,7 @@ export function componentBox(opts: {
   return m(
     "g.component-box",
     {
+      key: id,
       "data-component": id,
       transform: `translate(${x} ${y})`,
     },
