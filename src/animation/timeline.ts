@@ -56,11 +56,15 @@ export class SceneAnimation {
     }
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const simpleBox = config.componentStyle === "simpleBox";
     const labels = this.svg.querySelector("[data-role='labels']");
     const arrows = this.svg.querySelector("[data-role='static-arrows']");
 
-    labels?.classList.toggle("is-hidden", !config.overlays.labels);
+    labels?.classList.toggle("is-hidden", !config.overlays.labels || simpleBox);
     arrows?.classList.toggle("is-hidden", !(config.overlays.direction || reduced));
+    this.svg.classList.toggle("labels-off", !config.overlays.labels);
+    this.svg.classList.toggle("hide-reversing-valve", !config.showReversingValve);
+    this.svg.dataset.componentStyle = config.componentStyle;
 
     this.applyPlayback(config.playback);
   }
@@ -145,7 +149,7 @@ function buildMachineTimeline(svg: SVGSVGElement): gsap.core.Timeline {
   const tl = gsap.timeline({ paused: true });
   const outdoorBlades = svg.querySelector(".outdoor-fan .fan-blades");
   const indoorBlades = svg.querySelector(".indoor-fan .fan-blades");
-  const compressor = svg.querySelector(".compressor-pulse");
+  const compressor = svg.querySelectorAll(".compressor-pulse");
 
   if (outdoorBlades) {
     tl.to(
@@ -175,7 +179,7 @@ function buildMachineTimeline(svg: SVGSVGElement): gsap.core.Timeline {
     );
   }
 
-  if (compressor) {
+  if (compressor.length > 0) {
     tl.to(
       compressor,
       {

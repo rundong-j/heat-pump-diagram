@@ -42,13 +42,14 @@ export const DiagramScene: m.Component<SceneAttrs> = {
     animation = null;
   },
 
-  view() {
+  view(vnode) {
     return m(
       "svg.diagram-scene",
       {
         viewBox: "0 0 960 540",
         role: "img",
         "aria-label": "Mini-split heat pump cooling cycle",
+        "data-component-style": vnode.attrs.config.componentStyle,
       },
       minisplitCoolingScene(),
     );

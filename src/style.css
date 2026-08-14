@@ -203,8 +203,33 @@ body {
   font-family: inherit;
 }
 
-.layer-labels.is-hidden,
-.static-arrows.is-hidden {
+.simple-box {
+  fill: var(--unit-fill);
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+}
+
+.box-label {
+  fill: var(--label);
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.diagram-scene[data-component-style="simpleBox"] .icon-equipment {
+  visibility: hidden;
+}
+
+.diagram-scene:not([data-component-style="simpleBox"]) .simple-box-equipment {
+  visibility: hidden;
+}
+
+.diagram-scene.labels-off .box-label {
+  visibility: hidden;
+}
+
+.hide-reversing-valve .reversing-valve,
+.hide-reversing-valve .reversing-valve-label,
+.hide-reversing-valve [data-component="reversingValve"] {
   visibility: hidden;
 }
 

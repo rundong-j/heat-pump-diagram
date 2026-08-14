@@ -45,7 +45,7 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
       m("h1", "Heat pump cycle"),
       m(
         "p.lede",
-        "Phase 1: mini-split cooling loop with pauseable flow. Ducted layout, heating, and extra detail styles come later.",
+        "Mini-split cooling loop. Simple box is the default; icon, heating, and ducted layouts come next.",
       ),
 
       m("section", [
@@ -125,6 +125,7 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
               },
             },
             [
+              m("option", { value: "simpleBox" }, "Simple box"),
               m("option", { value: "icon" }, "Abstract icon"),
               m("option", { value: "sketch" }, "Realistic sketch"),
               m("option", { value: "crossSection" }, "Cross-section"),
@@ -148,6 +149,19 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
               m("option", { value: "house" }, "House context"),
             ],
           ),
+        ]),
+        m("label.checkbox", [
+          m("input", {
+            type: "checkbox",
+            checked: config.showReversingValve,
+            onchange: (event: Event) => {
+              onConfigChange({
+                ...config,
+                showReversingValve: (event.target as HTMLInputElement).checked,
+              });
+            },
+          }),
+          "Reversing valve",
         ]),
       ]),
 

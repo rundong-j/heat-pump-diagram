@@ -80,3 +80,41 @@ export function flowArrow(x: number, y: number, rotation: number): m.Vnode {
     transform: `translate(${x} ${y}) rotate(${rotation})`,
   });
 }
+
+export function componentBox(opts: {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  label: string;
+  pulse?: boolean;
+}): m.Vnode {
+  const { id, x, y, width, height, label, pulse } = opts;
+  const body = [
+    m("rect.simple-box", {
+      x: -width / 2,
+      y: -height / 2,
+      width,
+      height,
+      rx: 4,
+    }),
+    m(
+      "text.box-label",
+      {
+        "text-anchor": "middle",
+        dy: "0.35em",
+      },
+      label,
+    ),
+  ];
+
+  return m(
+    "g.component-box",
+    {
+      "data-component": id,
+      transform: `translate(${x} ${y})`,
+    },
+    pulse ? m("g.compressor-pulse", body) : body,
+  );
+}
