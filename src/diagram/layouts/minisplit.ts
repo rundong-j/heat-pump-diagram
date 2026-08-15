@@ -49,10 +49,11 @@ function flipPath(d: string): string {
 }
 
 function flipRotation(rotation: number): number {
-  if (rotation === 0) {
+  const n = ((rotation % 360) + 360) % 360;
+  if (n === 0) {
     return 180;
   }
-  if (rotation === 180) {
+  if (n === 180) {
     return 0;
   }
   return rotation;
@@ -67,7 +68,7 @@ function reverseArrows(
 ): CircuitLayout["arrows"] {
   return arrows.map((arrow) => ({
     ...arrow,
-    rotation: arrow.rotation + 180,
+    rotation: ((arrow.rotation + 180) % 360 + 360) % 360,
   }));
 }
 
