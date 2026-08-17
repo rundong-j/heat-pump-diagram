@@ -54,6 +54,7 @@ export const DiagramScene: m.Component<SceneAttrs> = {
         "data-indoor-side": vnode.attrs.config.indoorSide,
         "data-mode": vnode.attrs.config.mode,
         "data-background": vnode.attrs.config.background,
+        "data-line-style": vnode.attrs.config.lineStyle,
         style: {
           "--font-scale": String(vnode.attrs.config.fontScale),
         },

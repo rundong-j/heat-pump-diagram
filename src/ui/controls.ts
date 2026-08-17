@@ -6,6 +6,7 @@ import type {
   CycleMode,
   DiagramConfig,
   IndoorSide,
+  LineStyle,
   OverlayToggles,
   SystemType,
   ThemeMode,
@@ -186,6 +187,19 @@ function backgroundHouseIcon(): m.Children {
       m("rect", { x: 6, y: 11, width: 12, height: 8.5 }),
     ],
     { strokeWidth: 1.6 },
+  );
+}
+
+const LINE_STYLE_PATH = "M3.5 16.5 H8.5 V7.5 H15.5 V16.5 H20.5";
+
+function solidLineIcon(): m.Children {
+  return hudIcon(m("path", { d: LINE_STYLE_PATH }), { strokeWidth: 2 });
+}
+
+function dashedLineIcon(): m.Children {
+  return hudIcon(
+    m("path", { d: LINE_STYLE_PATH, "stroke-dasharray": "3.2 2.4" }),
+    { strokeWidth: 2 },
   );
 }
 
@@ -386,6 +400,17 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
                 1;
               onConfigChange({ ...config, fontScale: scale });
             },
+          }),
+        ]),
+        m("div.square-switch-row", [
+          squareCycleSwitch<LineStyle>({
+            name: "Line style",
+            value: config.lineStyle,
+            options: [
+              { value: "solid", label: "Solid", icon: solidLineIcon },
+              { value: "dashed", label: "Dashed", icon: dashedLineIcon },
+            ],
+            onChange: (lineStyle) => onConfigChange({ ...config, lineStyle }),
           }),
         ]),
       ]),

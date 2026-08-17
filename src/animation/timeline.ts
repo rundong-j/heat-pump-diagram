@@ -6,10 +6,15 @@ import { topologyKey } from "../diagram/layouts/minisplit";
 gsap.registerPlugin(MotionPathPlugin);
 
 const LOOP_SECONDS = 28;
+const DASH_LENGTH = 16;
+const DASH_GAP = 12;
+const DASH_CYCLE = DASH_LENGTH + DASH_GAP;
+const DASH_SPEED_VS_PARTICLES = 0.5;
 
 export class SceneAnimation {
   private mm: ReturnType<typeof gsap.matchMedia> | null = null;
   private flow: gsap.core.Timeline | null = null;
+  private dashes: gsap.core.Timeline | null = null;
   private machines: gsap.core.Timeline | null = null;
   private svg: SVGSVGElement | null = null;
   private topology: string | null = null;
@@ -22,6 +27,7 @@ export class SceneAnimation {
 
     this.mm.add("(prefers-reduced-motion: reduce)", () => {
       this.flow = null;
+      this.dashes = null;
       this.machines = null;
       gsap.set(svg.querySelector("[data-role='particles']"), { autoAlpha: 0 });
       gsap.set(svg.querySelector("[data-role='static-arrows']"), { autoAlpha: 1 });
@@ -29,15 +35,18 @@ export class SceneAnimation {
     });
 
     this.mm.add("(prefers-reduced-motion: no-preference)", () => {
-      gsap.set(svg.querySelector("[data-role='particles']"), { autoAlpha: 1 });
+      this.applyParticleVisibility(config.lineStyle);
       this.machines = buildMachineTimeline(svg);
       this.flow = buildFlowTimeline(svg, config.mode === "heating");
+      this.dashes = buildDashTimeline(svg);
       this.applyPlayback(config.playback);
       return () => {
         this.machines?.kill();
         this.flow?.kill();
+        this.dashes?.kill();
         this.machines = null;
         this.flow = null;
+        this.dashes = null;
       };
     });
   }
@@ -61,6 +70,10 @@ export class SceneAnimation {
     this.svg.dataset.componentStyle = config.componentStyle;
     this.svg.dataset.mode = config.mode;
     this.svg.dataset.background = config.background;
+    this.svg.dataset.lineStyle = config.lineStyle;
+    if (!reduced) {
+      this.applyParticleVisibility(config.lineStyle);
+    }
 
     const nextTopology = topologyKey(config);
     if (this.topology !== nextTopology) {
@@ -77,10 +90,14 @@ export class SceneAnimation {
     }
 
     const progress = this.flow?.progress() ?? 0;
+    const dashProgress = this.dashes?.progress() ?? 0;
     const wasPlaying = config.playback.playing;
     this.flow?.kill();
+    this.dashes?.kill();
     this.flow = buildFlowTimeline(this.svg, config.mode === "heating");
+    this.dashes = buildDashTimeline(this.svg);
     this.flow.progress(progress);
+    this.dashes.progress(dashProgress);
     this.applyPlayback({ ...config.playback, playing: wasPlaying });
   }
 
@@ -99,13 +116,23 @@ export class SceneAnimation {
     this.mm?.revert();
     this.mm = null;
     this.flow = null;
+    this.dashes = null;
     this.machines = null;
     this.svg = null;
     this.topology = null;
   }
 
+  private applyParticleVisibility(lineStyle: DiagramConfig["lineStyle"]): void {
+    if (!this.svg) {
+      return;
+    }
+    gsap.set(this.svg.querySelector("[data-role='particles']"), {
+      autoAlpha: lineStyle === "dashed" ? 0 : 1,
+    });
+  }
+
   private timelines(): gsap.core.Timeline[] {
-    return [this.flow, this.machines].filter(
+    return [this.flow, this.dashes, this.machines].filter(
       (tl): tl is gsap.core.Timeline => tl !== null,
     );
   }
@@ -141,6 +168,43 @@ function buildFlowTimeline(svg: SVGSVGElement, reversed: boolean): gsap.core.Tim
       0,
     );
   });
+
+  return tl;
+}
+
+function dashSecondsForLoop(svg: SVGSVGElement): number {
+  const loop = svg.querySelector<SVGPathElement>("#refrigerant-loop");
+  const loopLength = loop?.getTotalLength() ?? 0;
+  if (loopLength <= 0) {
+    return LOOP_SECONDS;
+  }
+  return (DASH_CYCLE * LOOP_SECONDS) / (loopLength * DASH_SPEED_VS_PARTICLES);
+}
+
+function buildDashTimeline(svg: SVGSVGElement): gsap.core.Timeline {
+  const pipes = svg.querySelectorAll(".pipe");
+  const tl = gsap.timeline({
+    paused: true,
+    repeat: -1,
+  });
+
+  if (pipes.length === 0) {
+    return tl;
+  }
+
+  gsap.set(pipes, {
+    strokeDashoffset: "",
+    attr: { "stroke-dashoffset": 0 },
+  });
+  tl.to(
+    pipes,
+    {
+      duration: dashSecondsForLoop(svg),
+      ease: "none",
+      attr: { "stroke-dashoffset": -DASH_CYCLE },
+    },
+    0,
+  );
 
   return tl;
 }

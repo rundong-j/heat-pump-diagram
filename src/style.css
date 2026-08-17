@@ -259,6 +259,16 @@ body {
   stroke-width: 7;
 }
 
+.diagram-scene[data-line-style="dashed"] .pipe {
+  /* Dash + gap must sum to DASH_CYCLE in timeline.ts */
+  stroke-dasharray: 16 12;
+  stroke-linecap: butt;
+}
+
+.diagram-scene[data-line-style="dashed"] .layer-particles {
+  visibility: hidden;
+}
+
 .refrigerant-loop {
   fill: none;
   stroke: none;

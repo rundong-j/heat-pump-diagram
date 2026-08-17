@@ -5,6 +5,7 @@ export type BackgroundStyle = "none" | "house";
 export type IndoorSide = "left" | "right";
 export type ThemeMode = "light" | "dark";
 export type CoilLabelStyle = "role" | "location";
+export type LineStyle = "solid" | "dashed";
 
 export type OverlayToggles = {
   labels: boolean;
@@ -30,6 +31,7 @@ export type DiagramConfig = {
   theme: ThemeMode;
   fontScale: number;
   coilLabels: CoilLabelStyle;
+  lineStyle: LineStyle;
   overlays: OverlayToggles;
   playback: PlaybackState;
 };
@@ -45,6 +47,7 @@ export function createDefaultConfig(): DiagramConfig {
     theme: "light",
     fontScale: 1.3,
     coilLabels: "role",
+    lineStyle: "solid",
     overlays: {
       labels: true,
       pressure: false,
