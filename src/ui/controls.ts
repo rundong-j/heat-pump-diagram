@@ -205,6 +205,17 @@ function dashedLineIcon(): m.Children {
   );
 }
 
+function arrowLineIcon(): m.Children {
+  return hudIcon(
+    [
+      m("polygon", { points: "3.2,10.2 8.4,12 3.2,13.8 4.6,12", fill: "currentColor" }),
+      m("polygon", { points: "9.6,10.2 14.8,12 9.6,13.8 11,12", fill: "currentColor" }),
+      m("polygon", { points: "16,10.2 21.2,12 16,13.8 17.4,12", fill: "currentColor" }),
+    ],
+    { filled: true },
+  );
+}
+
 function temperatureColorIcon(): m.Children {
   return hudIcon([
     m("path", { d: "M3.5 16.5 H8.5", stroke: "#d73027", "stroke-width": 2.2 }),
@@ -446,6 +457,7 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
             options: [
               { value: "solid", label: "Solid", icon: solidLineIcon },
               { value: "dashed", label: "Dashed", icon: dashedLineIcon },
+              { value: "arrow", label: "Arrow", icon: arrowLineIcon },
             ],
             onChange: (lineStyle) => onConfigChange({ ...config, lineStyle }),
           }),

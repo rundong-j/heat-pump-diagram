@@ -5,7 +5,7 @@ export type BackgroundStyle = "none" | "house";
 export type IndoorSide = "left" | "right";
 export type ThemeMode = "light" | "dark";
 export type CoilLabelStyle = "role" | "location";
-export type LineStyle = "solid" | "dashed";
+export type LineStyle = "solid" | "dashed" | "arrow";
 export type LineColorStyle = "temperatureBased" | "constant";
 export type LineWidthStyle = "constant" | "pressureBased";
 
@@ -53,7 +53,7 @@ export function createDefaultConfig(): DiagramConfig {
     coilLabels: "role",
     lineStyle: "dashed",
     lineColor: "temperatureBased",
-    lineWidth: "constant",
+    lineWidth: "pressureBased",
     overlays: {
       labels: true,
       pressure: false,

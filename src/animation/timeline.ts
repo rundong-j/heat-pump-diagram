@@ -1,6 +1,7 @@
 import gsap from "gsap";
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 import type { DiagramConfig, PlaybackState } from "../model/types";
+import { PIPE_COLOR_IDS } from "../diagram/dashArrows";
 import { topologyKey } from "../diagram/layouts/minisplit";
 
 gsap.registerPlugin(MotionPathPlugin);
@@ -9,6 +10,9 @@ const LOOP_SECONDS = 28;
 const DASH_LENGTH = 16;
 const DASH_GAP = 12;
 const DASH_CYCLE = DASH_LENGTH + DASH_GAP;
+const HIGH_DASH_LENGTH = 8;
+const HIGH_DASH_GAP = 6;
+const HIGH_DASH_CYCLE = HIGH_DASH_LENGTH + HIGH_DASH_GAP;
 const DASH_SPEED_VS_PARTICLES = 0.5;
 
 export class SceneAnimation {
@@ -31,6 +35,7 @@ export class SceneAnimation {
       this.machines = null;
       gsap.set(svg.querySelector("[data-role='particles']"), { autoAlpha: 0 });
       gsap.set(svg.querySelector("[data-role='static-arrows']"), { autoAlpha: 1 });
+      applyDashOffset(svg, 0);
       return () => undefined;
     });
 
@@ -84,6 +89,7 @@ export class SceneAnimation {
     } else {
       this.applyPlayback(config.playback);
     }
+    applyDashOffset(this.svg, (this.dashes?.progress() ?? 0) * DASH_CYCLE);
   }
 
   private rebuildFlow(config: DiagramConfig): void {
@@ -129,7 +135,7 @@ export class SceneAnimation {
       return;
     }
     gsap.set(this.svg.querySelector("[data-role='particles']"), {
-      autoAlpha: lineStyle === "dashed" ? 0 : 1,
+      autoAlpha: lineStyle === "solid" ? 1 : 0,
     });
   }
 
@@ -183,27 +189,87 @@ function dashSecondsForLoop(svg: SVGSVGElement): number {
   return (DASH_CYCLE * LOOP_SECONDS) / (loopLength * DASH_SPEED_VS_PARTICLES);
 }
 
+function isHighPressurePipe(id: string): boolean {
+  return id === "hot" || id === "warm";
+}
+
+function layoutDashArrows(svg: SVGSVGElement, offset: number): void {
+  const pressure = svg.dataset.lineWidth === "pressureBased";
+
+  for (const id of PIPE_COLOR_IDS) {
+    const path = svg.querySelector<SVGPathElement>(`.pipe-${id}`);
+    const marks = svg.querySelectorAll<SVGPolygonElement>(
+      `.pipe-dash-arrows-${id} .pipe-dash-arrow`,
+    );
+    if (!path || marks.length === 0) {
+      continue;
+    }
+
+    const pathLen = path.getTotalLength();
+    const high = isHighPressurePipe(id);
+    const cycle = pressure && high ? HIGH_DASH_CYCLE : DASH_CYCLE;
+    const length = pressure && high ? HIGH_DASH_LENGTH : DASH_LENGTH;
+    const width = pressure ? (high ? 8 : 3.5) : 6;
+
+    if (pathLen < 2) {
+      marks.forEach((mark) => mark.setAttribute("visibility", "hidden"));
+      continue;
+    }
+
+    const phase = ((offset % cycle) + cycle) % cycle;
+    let used = 0;
+    for (let start = phase; start < pathLen && used < marks.length; start += cycle) {
+      const remaining = pathLen - start;
+      if (remaining < length * 0.35) {
+        break;
+      }
+      const arrowLen = Math.min(length, remaining);
+      const point = path.getPointAtLength(start);
+      const ahead = Math.min(start + Math.max(arrowLen, 1), pathLen - 0.01);
+      const next = path.getPointAtLength(ahead);
+      const deg = (Math.atan2(next.y - point.y, next.x - point.x) * 180) / Math.PI;
+      const height = (width / 2) * (arrowLen / length);
+      const notch = Math.min(arrowLen * 0.3, height);
+      const mark = marks[used];
+      mark.setAttribute(
+        "points",
+        `0,${-height} ${arrowLen},0 0,${height} ${notch},0`,
+      );
+      mark.setAttribute(
+        "transform",
+        `translate(${point.x} ${point.y}) rotate(${deg})`,
+      );
+      mark.setAttribute("visibility", "visible");
+      used += 1;
+    }
+    for (let i = used; i < marks.length; i += 1) {
+      marks[i].setAttribute("visibility", "hidden");
+    }
+  }
+}
+
+function applyDashOffset(svg: SVGSVGElement, offset: number): void {
+  svg.querySelectorAll(".pipe").forEach((pipe) => {
+    pipe.setAttribute("stroke-dashoffset", String(-offset));
+  });
+  layoutDashArrows(svg, offset);
+}
+
 function buildDashTimeline(svg: SVGSVGElement): gsap.core.Timeline {
-  const pipes = svg.querySelectorAll(".pipe");
+  const state = { offset: 0 };
   const tl = gsap.timeline({
     paused: true,
     repeat: -1,
   });
 
-  if (pipes.length === 0) {
-    return tl;
-  }
-
-  gsap.set(pipes, {
-    strokeDashoffset: "",
-    attr: { "stroke-dashoffset": 0 },
-  });
+  applyDashOffset(svg, 0);
   tl.to(
-    pipes,
+    state,
     {
+      offset: DASH_CYCLE,
       duration: dashSecondsForLoop(svg),
       ease: "none",
-      attr: { "stroke-dashoffset": -DASH_CYCLE },
+      onUpdate: () => applyDashOffset(svg, state.offset),
     },
     0,
   );

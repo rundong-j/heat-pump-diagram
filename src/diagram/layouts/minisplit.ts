@@ -17,6 +17,7 @@ import {
   flowArrow,
   reversingValveIcon,
 } from "../icons";
+import { dashArrowGroups } from "../dashArrows";
 import { layer } from "../layer";
 import { VIEWPORT_HEIGHT, VIEWPORT_WIDTH } from "../viewport";
 
@@ -469,6 +470,7 @@ export function minisplitScene(config: DiagramConfig): m.Children {
         d: circuit.loop,
         fill: "none",
       }),
+      dashArrowGroups(),
     ]),
 
     layer("particles", particles()),

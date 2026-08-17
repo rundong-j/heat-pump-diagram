@@ -275,18 +275,54 @@ body {
 
 .diagram-scene[data-line-style="dashed"] .pipe {
   stroke-linecap: butt;
-  /* Regular dashes. Period 28 = DASH_CYCLE in timeline.ts */
   stroke-dasharray: 16 12;
 }
 
 .diagram-scene[data-line-style="dashed"][data-line-width="pressureBased"] .pipe-hot,
 .diagram-scene[data-line-style="dashed"][data-line-width="pressureBased"] .pipe-warm {
-  /* Same pattern compressed along the pipe. */
   stroke-dasharray: 8 6;
 }
 
-.diagram-scene[data-line-style="dashed"] .layer-particles {
+.diagram-scene[data-line-style="dashed"] .layer-particles,
+.diagram-scene[data-line-style="arrow"] .layer-particles {
   visibility: hidden;
+}
+
+.diagram-scene[data-line-style="arrow"] .pipe {
+  stroke-opacity: 0;
+}
+
+.pipe-dash-arrows {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.diagram-scene[data-line-style="arrow"] .pipe-dash-arrows {
+  visibility: visible;
+}
+
+.pipe-dash-arrow {
+  stroke: none;
+}
+
+.pipe-dash-arrows-hot .pipe-dash-arrow {
+  fill: var(--pipe-hot);
+}
+
+.pipe-dash-arrows-warm .pipe-dash-arrow {
+  fill: var(--pipe-warm);
+}
+
+.pipe-dash-arrows-cool .pipe-dash-arrow {
+  fill: var(--pipe-cool);
+}
+
+.pipe-dash-arrows-cold .pipe-dash-arrow {
+  fill: var(--pipe-cold);
+}
+
+.diagram-scene[data-line-color="constant"] .pipe-dash-arrow {
+  fill: var(--house-stroke);
 }
 
 .refrigerant-loop {

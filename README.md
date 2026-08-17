@@ -9,9 +9,9 @@ Thermodynamic values are illustrative teaching aids, not a refrigerant property 
 ## Features
 
 - Mini-split cooling and heating modes with animated refrigerant flow
-- Line style: solid pipes with particles, or marching dashed lines (default)
+- Line style: solid pipes with particles, marching dashes (default), or flow arrowheads
 - Line color: four-stop temperature scale (default) or constant house-outline stroke
-- Line width & spacing: uniform (default) or pressure-based (thick/short high-side, thin/regular low-side)
+- Line width & spacing: pressure-based (default; thick/short high-side, thin/regular low-side) or uniform
 - Simple box component style (abstract icon still in the codebase)
 - Light/dark theme, XL default font, indoor unit left or right
 - Optional house outline with outdoor weather and warm/cool zone fills
@@ -54,7 +54,7 @@ src/
 
 ## Defaults
 
-On first load: mini-split, heating, simple box, light theme, house & weather, indoor unit on the right, role-based coil labels (Evaporator / Condenser), XL font, dashed lines, temperature-based color, constant width & spacing.
+On first load: mini-split, heating, simple box, light theme, house & weather, indoor unit on the right, role-based coil labels (Evaporator / Condenser), XL font, dashed lines, temperature-based color, pressure-based width & spacing.
 
 ## Roadmap
 
