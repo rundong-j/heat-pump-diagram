@@ -1,5 +1,6 @@
 import m from "mithril";
 import type { PlaybackState } from "../model/types";
+import { saveDiagramScreenshot } from "./screenshot";
 
 export type PlaybackHudAttrs = {
   playback: PlaybackState;
@@ -68,9 +69,13 @@ export const PlaybackHud: m.Component<PlaybackHudAttrs> = {
         "button.screenshot-button",
         {
           type: "button",
-          disabled: true,
-          title: "Screenshot (unavailable)",
-          "aria-label": "Screenshot. Unavailable.",
+          title: "Save a high-resolution JPEG of the diagram",
+          "aria-label": "Screenshot. Save a high-resolution JPEG of the diagram.",
+          onclick: () => {
+            void saveDiagramScreenshot().catch((error: unknown) => {
+              console.error(error);
+            });
+          },
         },
         "screenshot",
       ),
