@@ -9,11 +9,12 @@ Thermodynamic values are illustrative teaching aids, not a refrigerant property 
 ## Features
 
 - Mini-split cooling and heating modes with animated refrigerant flow
-- Simple box and abstract icon component styles
-- Light/dark theme, font scale, and indoor-unit placement
-- Optional house outline with outdoor weather hints and warm/cool zone fills
+- Four-color lines (hot / warm / cold / cool) along the cycle
+- Simple box component style (abstract icon still in the codebase)
+- Light/dark theme, XL default font, indoor unit left or right
+- Optional house outline with outdoor weather and warm/cool zone fills
 - Overlays for labels, direction, pressure, temperature, and phase
-- Play/pause and playback speed controls
+- Play/pause, playback speed, and 4K JPEG screenshot (save dialog)
 
 ## Local development
 
@@ -22,12 +23,14 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173/
+Open http://localhost:5173/heat-pump-diagram/ (Vite `base` matches the GitHub Pages project path).
 
 ```bash
 npm run build    # typecheck + production build
 npm run preview  # preview production build
 ```
+
+Pushes to `main` publish GitHub Pages automatically.
 
 ## Tech stack
 
@@ -43,13 +46,13 @@ src/
   model/          DiagramConfig and illustrative cycle data
   diagram/        SVG scene and mini-split layout
   animation/      GSAP flow timeline
-  ui/             Control panel and playback HUD
+  ui/             Control panel, playback HUD, screenshot export
   hosts/          Web mount
 ```
 
 ## Defaults
 
-On first load the diagram shows a mini-split in heating mode with a simple-box style, light theme, house and weather background, indoor unit on the right, and role-based coil labels (Evaporator / Condenser).
+On first load: mini-split, heating, simple box, light theme, house & weather, indoor unit on the right, role-based coil labels (Evaporator / Condenser), XL font.
 
 ## Roadmap
 

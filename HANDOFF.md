@@ -1,10 +1,13 @@
-# Agent handoff — refrigeration cycle diagram generator
+# Agent handoff — heat pump diagram
 
 Greenfield Vite + Mithril + TypeScript web app that draws a configurable, pauseable split heat-pump cycle as SVG. Thermodynamic overlays are **illustrative** (canned teaching values), not a property library. V2 target is an Office.js **content add-in** so the diagram stays interactive inside a PowerPoint slideshow.
 
-Run locally: `npm install && npm run dev` → [http://localhost:5173/](http://localhost:5173/). Typecheck/build: `npm run build`.
+**Repo:** https://github.com/rundong-j/heat-pump-diagram (public)  
+**Live:** https://rundong-j.github.io/heat-pump-diagram/
 
-If the UI looks stale after edits, kill stray Vite listeners on 5173–5180 and restart (`rm -rf node_modules/.vite && npm run dev`). Multiple Vite processes have caused “no change” false alarms.
+Run locally: `npm install && npm run dev` → [http://localhost:5173/heat-pump-diagram/](http://localhost:5173/heat-pump-diagram/) (`vite.config.ts` `base` is `/heat-pump-diagram/` for GitHub Pages). Typecheck/build: `npm run build`. Pushes to `main` deploy Pages via `.github/workflows/deploy-pages.yml`.
+
+If the UI looks stale after edits, kill stray Vite listeners on 5173–5180 and restart (`rm -rf node_modules/.vite && npm run dev`). Multiple Vite processes have caused “no change” false alarms. `ERR_CONNECTION_REFUSED` on 5173 means the dev server is not running.
 
 ## Status vs original plan
 
@@ -12,24 +15,25 @@ If the UI looks stale after edits, kill stray Vite listeners on 5173–5180 and 
 | --- | --- | --- |
 | 0 | Vite/Mithril/TS shell, stable SVG viewport | Done |
 | 1 | Mini-split cooling loop, abstract icons, pauseable GSAP flow | Done |
-| 1+ | Simple-box style, reversing-valve show/hide, indoor/outdoor flip, layout polish | Done |
-| 2 | Independent P/T/phase overlays; heating mode (reverse flow, coil role swap) | Done. Heating reverses particles/arrows, swaps coil roles and high/low pipe colors, flips RV slide + TXV. Overlay checkboxes drive canned badges from `cycleData.ts`. |
-| 2+ | Light/dark theme; warm/cool zone fills; diagram font scale; coil label style | Done. Dark = prior look; default **light**. Font size is diagram-only (`− Aa +`). Coil labels: role (Evaporator/Condenser) vs location (Indoor/Outdoor coil). |
-| 2++ | Square-switch HUD for Type / Cycle / Theme; simplified playback; outdoor weather | Done. **Type** (disabled), **Cycle**, and **Theme** are square icon switches (4-column grid, title top / icon center / value bottom). Playback is play-pause icon + inline speed slider (no restart/scrub). Outdoor zone shows snow (heating) or sun (cooling). **Heat transfer** overlay option exists but is disabled and off by default. Scene-stability debug block moved to panel bottom. |
-| 3 | Ducted-split layout; none vs house background | **House outline done** (default). Ducted still not started — Type stays disabled; Background is enabled (`none` \| `house`). |
-| 4 | Icon / sketch / cross-section art swap | Partial. `simpleBox` and `icon` render. `sketch` and `crossSection` options are disabled. |
-| 5 | URL-serialized config, presenter chrome, SVG/PNG export | Not started |
+| 1+ | Simple-box style, reversing-valve show/hide, indoor/outdoor flip, layout polish | Done. RV HUD tile exists but is **disabled** (default off). |
+| 2 | Independent P/T/phase overlays; heating mode (reverse flow, coil role swap) | Done. Heating reverses particles/arrows, swaps coil roles, flips RV slide + TXV. Overlay checkboxes drive canned badges from `cycleData.ts`. |
+| 2+ | Light/dark theme; zone fills; diagram font scale; coil label style | Done. Default **light**. Font size is a square switch (Small / Normal / Large / **XL default 1.3**). Coil labels: Evap / Cond vs Outdoor / Indoor. |
+| 2++ | Square-switch HUD; simplified playback; outdoor weather | Done. 3-column tiles. Playback is play-pause + speed slider + **screenshot** (4K JPEG save dialog). |
+| 2+++ | Four-color refrigerant lines | Done. ColorBrewer RdYlBu: hot / warm / cold / cool. Hot and cold stop at condenser / evaporator centers; warm and cool continue from there. |
+| 3 | Ducted-split layout; none vs house background | **House & weather done** (default). Ducted not started — Type stays disabled. Background tile: `none` (plain white) \| `house` (zones + weather + outline). |
+| 4 | Icon / sketch / cross-section art swap | Partial. `simpleBox` default (tile **disabled**). `icon` still renders if enabled in config. `sketch` and `crossSection` disabled. |
+| 5 | URL-serialized config, presenter chrome, export | **JPEG screenshot done** (`src/ui/screenshot.ts`, 3840×2160). URL config and SVG/PNG fallback not started. |
 | 6 | PowerPoint content add-in host | Not started. Host split sketched (`src/hosts/web.ts` only). |
 
 ## Defaults (what you see on first load)
 
 Defined in `src/model/types.ts` `createDefaultConfig()`:
 
-- Mini-split, **heating**, **simple box**, **light** theme, **house** background
+- Mini-split, **heating**, **simple box**, **light** theme, **house & weather** background
 - **Reversing valve off** (simplified rectangle loop)
 - Indoor unit on the **right**
 - Coil labels: **role** (Evaporator / Condenser)
-- Font scale **1**
+- Font scale **1.3** (XL)
 - Labels and direction on; P/T/phase and **heat transfer** off
 - Playback playing at **1×** (`LOOP_SECONDS = 28` in `src/animation/timeline.ts`)
 
@@ -42,46 +46,62 @@ src/
   model/types.ts                DiagramConfig (single source of truth)
   model/cycleData.ts            Illustrative P/T/phase + coil role/label helpers
   diagram/scene.ts              Mithril SVG root; keyed so it does not remount
-  diagram/layouts/minisplit.ts  Paths, boxes, arrows, zone fills, house outline, outdoor weather, mirrors
+  diagram/layouts/minisplit.ts  Paths, boxes, arrows, zones, house, weather, mirrors
   diagram/icons.ts              Geometric icons + simple-box helper
   animation/timeline.ts         GSAP flow (MotionPath) + machine tweens
-  ui/controls.ts                Config HUD; square switches + dropdowns; debug at bottom
-  ui/playback.ts                Play/pause icon toggle + inline speed slider
+  ui/controls.ts                Config HUD; square switches; debug at bottom
+  ui/playback.ts                Play/pause + speed + screenshot button
+  ui/screenshot.ts              Clone SVG → 4K JPEG → showSaveFilePicker
   hosts/web.ts                  Web mount only
   app.ts                        App state; sets documentElement data-theme
-  style.css                     Theme tokens; house, weather, font-scale, square-switch rules
+  style.css                     Theme tokens; pipes; house; weather; square-switch
 ```
 
-**Control panel order (top → bottom):** Playback → System → Overlays → Scene stability (debug).
+**Control panel** sits to the **right** of the diagram (stacks below at ≤860px). Order: Playback → System → Overlays → Scene stability (debug).
 
-**Square switches:** reusable `squareCycleSwitch()` in `controls.ts`. Each tile is ~¼ panel width (4-column grid). Title on top, icon center, current value bottom; click cycles options. **Type** is disabled (mini-split only for now). **Cycle** uses fire/heating and snowflake/cooling icons. **Theme** uses sun/light and moon/dark icons on its own row below Type+Cycle.
+**Square switches:** `squareCycleSwitch()` in `controls.ts`. 3-column grid, title top / icon center / value bottom; click cycles. Icon is optional (Indoor and Coil labels are text-only).
 
-Layer order **back → front**: zone fills → **outdoor weather** (snow or sun) → **house outline** → refrigerant **lines** → **particles** → **arrows** → **component boxes** → overlay labels → **heat-transfer labels** (separate layer) → P/T/phase badges.
+**System rows:**
+1. **Type** (disabled) · **Cycle** (fire / snowflake) · **Reversing valve** (disabled, Off)
+2. **Component style** (disabled, Simple box) · **Background** (None \| House & weather) · **Coil labels** (Evap / Cond \| Outdoor / Indoor)
+3. **Indoor** (Left side \| Right side) · **Theme** (light bulb / moon) · **Font size** (Aa, default XL)
 
-`circuitLayout()` owns pipe `d` strings and box centers. Heating reverses arrow rotations (normalize `% 360` before `flipRotation`). `mirrorLayout()` flips X for `indoorSide: "right"`. Icon equipment flips with `translate(960 0) scale(-1 1)`.
+**Layers** are a naming convention, not a compositor. `minisplitScene()` returns keyed `<g class="layer-*">` groups that **stay mounted**. Visibility is CSS `data-*` plus a few `classList` toggles in `SceneAnimation`. Do not conditionally create/destroy equipment groups.
 
-**Simple-box loop (RV off):** compressor and expansion valve share outdoor x before mirror (`660`); expansion under compressor on the bottom span. Paired top/bottom arrows at x=`370` (indoor side, inset from the house wall). Outdoor/indoor vertical arrows at the coils (`840` / `145`).
+Layer order **back → front**: zone fills → outdoor weather → house outline → refrigerant **lines** (hot/warm/cold/cool) → invisible **loop** (particles) → **particles** → **arrows** → **equipment** (icon set AND simple-box set both in DOM) → labels → heat-transfer labels → P/T/phase badges.
 
-Rebuild GSAP **flow** when `topologyKey` changes (`showReversingValve`, `componentStyle`, `indoorSide`, `mode`). Overlay, theme, font scale, background, and coil-label toggles must **not** rebuild the timeline.
+`circuitLayout()` owns `loop` plus four colored `d` strings and box centers. **Hot** ends at the condenser Y; **warm** continues to the expansion valve; **cold** ends at the evaporator Y; **cool** continues to the compressor. Heating swaps which coil is condenser vs evaporator. The hidden `loop` path still traces the full rectangle for GSAP. Rebuild flow only when `topologyKey` changes (`showReversingValve`, `componentStyle`, `indoorSide`, `mode`).
 
-Theme: `document.documentElement.dataset.theme`. Font scale: `--font-scale` on the SVG only. House: always in the DOM; shown via `[data-background="house"]` (visibility CSS). Outdoor weather toggles via `[data-mode="heating"|"cooling"]` on `.weather-snow` / `.weather-sun` (visibility CSS; both always in DOM). Heat-transfer labels (`Heat absorbed` / `Heat rejected`) live in `[data-role="heat-transfer"]`; hidden unless `overlays.heatTransfer` (option disabled in HUD for now). Particles stay white in both themes.
+Pipe colors (light): `--pipe-hot #d73027`, `--pipe-warm #fdae61`, `--pipe-cool #74add1`, `--pipe-cold #313695`. Dark theme uses the same hues, lightened. High-side stroke 5px; low-side 7px.
+
+Heating reverses arrow rotations (normalize `% 360` before `flipRotation`). `mirrorLayout()` flips X for `indoorSide: "right"`. Icon equipment flips with `translate(960 0) scale(-1 1)`.
+
+**Simple-box loop (RV off):** compressor and expansion share outdoor x before mirror (`660`); expansion under compressor. Coil centers `840` / `145` at y=`328`. Paired arrows at x=`370`.
+
+**House & weather:** both always in the DOM. Shown only when `data-background="house"` (plain white + no weather/zones/outline when `none`). Weather: `[data-mode="heating"|"cooling"]` on `.weather-snow` / `.weather-sun`.
+
+Compressor pulse: `transformOrigin: "50% 50%"`. Fan blades still rotate around `"0px 0px"`. Particles stay white. Heat-transfer HUD option stays disabled.
+
+Screenshot: clones `.diagram-scene`, inlines CSS variables + stylesheets, rasterizes 3840×2160 JPEG, `showSaveFilePicker` (download fallback). Cancel is a no-op.
 
 ## Hard rules (easy to break)
 
-1. **Mithril vs GSAP:** SVG scene created once (`key: "diagram-scene"`). Destroying SVG nodes kills tweens. Prefer CSS / `data-*` / in-place attribute patches.
-2. **Fragment keys:** children of one parent must **all** have keys or **none** do. Putting `key: "house"` only on the house vnode crashed the scene (`In fragments, vnodes must either all have keys or none have keys`).
+1. **Mithril vs GSAP:** SVG scene created once (`key: "diagram-scene"`). Destroying SVG nodes kills tweens. Prefer CSS / `data-*` / in-place attribute patches. Icon and simple-box equipment must **both** stay in the DOM.
+2. **Fragment keys:** children of one parent must **all** have keys or **none** do.
 3. **Do not put labels inside a group that inherits `stroke`.** Box labels: `fill: var(--label); stroke: none`.
-4. **Simple box vs overlay labels:** `[data-component-style="simpleBox"] .layer-labels { visibility: hidden }`. Prefer CSS on `data-component-style` / `.labels-off` / `.hide-reversing-valve` / `data-background` / mode-based weather classes.
+4. **Simple box vs overlay labels:** `[data-component-style="simpleBox"] .layer-labels { visibility: hidden }`. Prefer CSS on `data-component-style` / `.labels-off` / `.hide-reversing-valve` / `data-background` / mode-based weather.
 5. **`prefers-reduced-motion`:** no particles; static arrows stay visible.
-6. **Arrow reverse + mirror:** normalize rotations after heating reverse or indoor-right flip breaks left/right arrows.
+6. **Arrow reverse + mirror:** normalize rotations after heating reverse or indoor-right flip.
 7. **Icon equipment coords** are canonical (indoor-left) inside the flip group; simple-box boxes use already-mirrored `circuit.*` positions.
-8. **Control-panel label CSS:** `.control-panel label { flex-direction: column }` applies to all labels. Playback speed uses `.playback-hud label.speed-control { flex-direction: row }` so label / slider / value stay on one line beside the play button.
+8. **Control-panel label CSS:** `.control-panel label { flex-direction: column }`. Playback speed uses `.playback-hud label.speed-control { flex-direction: row }`.
+9. **Disabled HUD tiles** (Type, reversing valve, component style, heat transfer) are reserved product surface — do not delete.
+10. **Local URL** must include the Vite `base` path: `/heat-pump-diagram/`. Connection refused on 5173 = server not running.
 
 ## Remaining work (priority)
 
-1. **Phase 3 — ducted.** Second layout sharing the same loop topology. Re-enable Type when ready. House is a simple outline today; richer 2D section can wait.
-2. **Phase 4 — art.** Sketch SVGs with shared pipe anchors; cross-section later (compressor-only first). Re-enable those style options when ready.
-3. **Phase 5 — share/present.** Serialize `DiagramConfig` to the URL; compact presenter chrome; SVG/PNG export fallback.
+1. **Phase 3 — ducted.** Second layout sharing loop topology. Split `minisplit.ts` / layout registry before copying a fourth path set. Re-enable Type when ready.
+2. **Phase 4 — art.** Sketch SVGs with shared pipe anchors; cross-section later. Re-enable those style options when ready.
+3. **Phase 5 — share/present.** Serialize `DiagramConfig` to the URL; compact presenter chrome; SVG/PNG export fallback (JPEG screenshot already works).
 4. **Phase 6 — PowerPoint.** Second HTML entry, add-in-only XML manifest (`ContentApp`), HTTPS host, `Office.context.document.settings` + `saveAsync` on every change, `getActiveViewAsync` (web slideshow is a new session so `ActiveViewChanged` will not fire). Controls in the content frame only. Pad top-right for the Office personality menu.
 
 ## Out of scope until after V2 shell
@@ -91,7 +111,8 @@ VRF, geothermal, packaged units, aux heat, defrost animation, live psychrometric
 ## Product decisions already made
 
 - Audience: teaching / slide decks, not engineering design software.
-- Refrigerant: generic label; no property lookup.
+- Refrigerant: generic label; no property lookup. Line colors are a 4-stop temperature scale, not a property library.
 - Expansion device: TXV/EEV-style, not capillary-only.
 - V2 embed path: Office.js **content add-in**, not a task pane or third-party web viewer.
-- Default presentation: heating, indoor right, light theme, house background, role-based coil labels.
+- Default presentation: heating, indoor right, light theme, house & weather, role-based coil labels, XL font.
+- Layers: keep mounted `g.layer-*` groups; do not build a scene-graph that remounts SVG.
