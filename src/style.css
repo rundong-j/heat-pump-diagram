@@ -16,8 +16,10 @@
   --accent: #2f6f6a;
   --accent-ink: #f4f1ea;
   --highlight: #b08a3a;
-  --pipe-hot: #c46f2e;
-  --pipe-cold: #3d8fa3;
+  --pipe-hot: #d73027;
+  --pipe-warm: #fdae61;
+  --pipe-cool: #74add1;
+  --pipe-cold: #313695;
   --unit-fill: #ffffff;
   --unit-stroke: #6b7784;
   --label: #1f2933;
@@ -54,8 +56,10 @@
   --accent: #2f6f6a;
   --accent-ink: #f4f1ea;
   --highlight: #c4a35a;
-  --pipe-hot: #d08a4c;
-  --pipe-cold: #5ba3b5;
+  --pipe-hot: #ef5a4d;
+  --pipe-warm: #f4b06a;
+  --pipe-cool: #8ec0dc;
+  --pipe-cold: #6b8fd9;
   --unit-fill: #252c34;
   --unit-stroke: #8b98a5;
   --label: #e6edf2;
@@ -235,12 +239,22 @@ body {
   stroke-linejoin: round;
 }
 
-.pipe-high {
+.pipe-hot {
   stroke: var(--pipe-hot);
   stroke-width: 5;
 }
 
-.pipe-low {
+.pipe-warm {
+  stroke: var(--pipe-warm);
+  stroke-width: 5;
+}
+
+.pipe-cool {
+  stroke: var(--pipe-cool);
+  stroke-width: 7;
+}
+
+.pipe-cold {
   stroke: var(--pipe-cold);
   stroke-width: 7;
 }

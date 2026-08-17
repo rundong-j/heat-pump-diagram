@@ -22,8 +22,10 @@ type Point = { x: number; y: number };
 
 type CircuitLayout = {
   loop: string;
-  high: string;
-  low: string;
+  hot: string;
+  warm: string;
+  cold: string;
+  cool: string;
   indoorCoil: Point;
   outdoorCoil: Point;
   compressor: Point;
@@ -100,8 +102,10 @@ function assignStations(
 function mirrorLayout(layout: CircuitLayout): CircuitLayout {
   return {
     loop: flipPath(layout.loop),
-    high: flipPath(layout.high),
-    low: flipPath(layout.low),
+    hot: flipPath(layout.hot),
+    warm: flipPath(layout.warm),
+    cold: flipPath(layout.cold),
+    cool: flipPath(layout.cool),
     indoorCoil: flipPoint(layout.indoorCoil),
     outdoorCoil: flipPoint(layout.outdoorCoil),
     compressor: flipPoint(layout.compressor),
@@ -124,12 +128,10 @@ function mirrorLayout(layout: CircuitLayout): CircuitLayout {
 function reversingValveLayout(heating: boolean): CircuitLayout {
   return {
     loop: "M690,370 V250 H840 V405 H145 V220 H720 V370 H690 Z",
-    high: heating
-      ? "M690,370 H720 V220 H145 V405 H705"
-      : "M690,370 V250 H840 V405 H705",
-    low: heating
-      ? "M705,405 H840 V250 H690"
-      : "M705,405 H145 V220 H720 V370 H690",
+    hot: heating ? "M690,370 H720 V220 H145 V405" : "M690,370 V250 H840 V405",
+    warm: heating ? "M145,405 H705" : "M840,405 H705",
+    cold: heating ? "M705,405 H840 V250" : "M705,405 H145 V220",
+    cool: heating ? "M840,250 H690" : "M145,220 H720 V370 H690",
     indoorCoil: { x: 145, y: 280 },
     outdoorCoil: { x: 840, y: 328 },
     compressor: { x: 705, y: 370 },
@@ -158,12 +160,10 @@ function reversingValveLayout(heating: boolean): CircuitLayout {
 function simpleBoxLayout(heating: boolean): CircuitLayout {
   return {
     loop: "M660,250 H840 V405 H145 V250 H660 Z",
-    high: heating
-      ? "M660,250 H145 V405 H660"
-      : "M660,250 H840 V405 H660",
-    low: heating
-      ? "M660,405 H840 V250 H660"
-      : "M660,405 H145 V250 H660",
+    hot: heating ? "M660,250 H145 V405" : "M660,250 H840 V405",
+    warm: heating ? "M145,405 H660" : "M840,405 H660",
+    cold: heating ? "M660,405 H840 V250" : "M660,405 H145 V250",
+    cool: heating ? "M840,250 H660" : "M145,250 H660",
     indoorCoil: { x: 145, y: 328 },
     outdoorCoil: { x: 840, y: 328 },
     compressor: { x: 660, y: 250 },
@@ -190,12 +190,10 @@ function simpleBoxLayout(heating: boolean): CircuitLayout {
 function iconLayout(heating: boolean): CircuitLayout {
   return {
     loop: "M700,390 V250 H840 V405 H145 V220 H700 V390 Z",
-    high: heating
-      ? "M700,390 V220 H145 V405 H705"
-      : "M700,390 V250 H840 V405 H705",
-    low: heating
-      ? "M705,405 H840 V250 H700"
-      : "M705,405 H145 V220 H700 V390",
+    hot: heating ? "M700,390 V220 H145 V405" : "M700,390 V250 H840 V405",
+    warm: heating ? "M145,405 H705" : "M840,405 H705",
+    cold: heating ? "M705,405 H840 V250" : "M705,405 H145 V220",
+    cool: heating ? "M840,250 H700" : "M145,220 H700 V390",
     indoorCoil: { x: 145, y: 280 },
     outdoorCoil: { x: 840, y: 328 },
     compressor: { x: 705, y: 370 },
@@ -444,14 +442,24 @@ export function minisplitScene(config: DiagramConfig): m.Children {
     ]),
 
     m("g.layer-circuit", { key: "circuit" }, [
-      m("path.pipe.pipe-high", {
-        key: "pipe-high",
-        d: circuit.high,
+      m("path.pipe.pipe-hot", {
+        key: "pipe-hot",
+        d: circuit.hot,
         fill: "none",
       }),
-      m("path.pipe.pipe-low", {
-        key: "pipe-low",
-        d: circuit.low,
+      m("path.pipe.pipe-warm", {
+        key: "pipe-warm",
+        d: circuit.warm,
+        fill: "none",
+      }),
+      m("path.pipe.pipe-cold", {
+        key: "pipe-cold",
+        d: circuit.cold,
+        fill: "none",
+      }),
+      m("path.pipe.pipe-cool", {
+        key: "pipe-cool",
+        d: circuit.cool,
         fill: "none",
       }),
       m("path.refrigerant-loop", {
