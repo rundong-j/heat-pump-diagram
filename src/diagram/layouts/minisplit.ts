@@ -17,6 +17,8 @@ import {
   flowArrow,
   reversingValveIcon,
 } from "../icons";
+import { layer } from "../layer";
+import { VIEWPORT_HEIGHT, VIEWPORT_WIDTH } from "../viewport";
 
 type Point = { x: number; y: number };
 
@@ -35,12 +37,11 @@ type CircuitLayout = {
   stations: Record<StationId, Point>;
 };
 
-const VIEWBOX_WIDTH = 960;
-
 const STATION_ORDER: StationId[] = ["discharge", "liquid", "twoPhase", "suction"];
+const ZONE_WIDTH = VIEWPORT_WIDTH / 2;
 
 function flipX(x: number): number {
-  return VIEWBOX_WIDTH - x;
+  return VIEWPORT_WIDTH - x;
 }
 
 function flipPath(d: string): string {
@@ -279,7 +280,7 @@ function houseContext(flip: boolean): m.Children {
     "g.house-context",
     {
       "data-role": "house",
-      transform: flip ? `translate(${VIEWBOX_WIDTH} 0) scale(-1 1)` : undefined,
+      transform: flip ? `translate(${VIEWPORT_WIDTH} 0) scale(-1 1)` : undefined,
     },
     [
       m("path.house-body", {
@@ -322,7 +323,7 @@ function outdoorWeather(flip: boolean): m.Children {
   return m(
     "g.outdoor-weather",
     {
-      transform: flip ? `translate(${VIEWBOX_WIDTH} 0) scale(-1 1)` : undefined,
+      transform: flip ? `translate(${VIEWPORT_WIDTH} 0) scale(-1 1)` : undefined,
     },
     [
       m("g.weather-sun", [
@@ -404,26 +405,26 @@ export function minisplitScene(config: DiagramConfig): m.Children {
     return [overlayBadge(text, point.x, point.y, `badge-${station}`, config.fontScale)];
   });
 
-  const indoorZoneX = flip ? 480 : 0;
-  const outdoorZoneX = flip ? 0 : 480;
+  const indoorZoneX = flip ? ZONE_WIDTH : 0;
+  const outdoorZoneX = flip ? 0 : ZONE_WIDTH;
 
   return [
-    m("g.layer-background", { key: "background" }, [
+    layer("background", [
       m("rect.zone-fill.zone-indoor", {
         x: indoorZoneX,
         y: 0,
-        width: 480,
-        height: 540,
+        width: ZONE_WIDTH,
+        height: VIEWPORT_HEIGHT,
       }),
       m("rect.zone-fill.zone-outdoor", {
         x: outdoorZoneX,
         y: 0,
-        width: 480,
-        height: 540,
+        width: ZONE_WIDTH,
+        height: VIEWPORT_HEIGHT,
       }),
       outdoorWeather(flip),
       houseContext(flip),
-      m("line.wall", { x1: 480, y1: 72, x2: 480, y2: 500 }),
+      m("line.wall", { x1: ZONE_WIDTH, y1: 72, x2: ZONE_WIDTH, y2: 500 }),
       m(
         "text.zone-title",
         { x: placeX(210), y: 54, "text-anchor": "middle" },
@@ -436,12 +437,12 @@ export function minisplitScene(config: DiagramConfig): m.Children {
       ),
       m(
         "text.scene-caption",
-        { "data-role": "caption", x: 480, y: 28, "text-anchor": "middle" },
+        { "data-role": "caption", x: ZONE_WIDTH, y: 28, "text-anchor": "middle" },
         `Mini-split heat pump · ${heating ? "heating" : "cooling"}`,
       ),
     ]),
 
-    m("g.layer-circuit", { key: "circuit" }, [
+    layer("circuit", [
       m("path.pipe.pipe-hot", {
         key: "pipe-hot",
         d: circuit.hot,
@@ -470,15 +471,10 @@ export function minisplitScene(config: DiagramConfig): m.Children {
       }),
     ]),
 
-    m(
-      "g.layer-particles",
-      { key: "particles", "data-role": "particles" },
-      particles(),
-    ),
+    layer("particles", particles()),
 
-    m(
-      "g.layer-arrows",
-      { key: "arrows" },
+    layer(
+      "arrows",
       m(
         "g.static-arrows",
         { key: "static-arrows", "data-role": "static-arrows" },
@@ -488,10 +484,10 @@ export function minisplitScene(config: DiagramConfig): m.Children {
       ),
     ),
 
-    m("g.layer-equipment", { key: "equipment" }, [
+    layer("equipment", [
       m("g.icon-equipment", {
         key: "icon-equipment",
-        transform: flip ? `translate(${VIEWBOX_WIDTH} 0) scale(-1 1)` : undefined,
+        transform: flip ? `translate(${VIEWPORT_WIDTH} 0) scale(-1 1)` : undefined,
       }, [
         m("g.indoor-unit", [
           m("rect.unit-body", { x: 70, y: 185, width: 250, height: 145, rx: 14 }),
@@ -590,7 +586,7 @@ export function minisplitScene(config: DiagramConfig): m.Children {
       ]),
     ]),
 
-    m("g.layer-labels", { key: "labels", "data-role": "labels" }, [
+    layer("labels", [
       label("Indoor unit", placeX(195), 172, placeAnchor("middle")),
       label(
         coilLabel("indoor", indoorRole, config.coilLabels),
@@ -623,29 +619,21 @@ export function minisplitScene(config: DiagramConfig): m.Children {
       label("Liquid line", placeX(250), 392, placeAnchor("middle")),
     ]),
 
-    m(
-      "g.layer-heat-transfer",
-      { key: "heat-transfer", "data-role": "heat-transfer" },
-      [
-        label(
-          heatFlowLabel(indoorRole),
-          placeX(195),
-          455,
-          placeAnchor("middle"),
-        ),
-        label(
-          heatFlowLabel(outdoorRole),
-          placeX(755),
-          475,
-          placeAnchor("middle"),
-        ),
-      ],
-    ),
+    layer("heat-transfer", [
+      label(
+        heatFlowLabel(indoorRole),
+        placeX(195),
+        455,
+        placeAnchor("middle"),
+      ),
+      label(
+        heatFlowLabel(outdoorRole),
+        placeX(755),
+        475,
+        placeAnchor("middle"),
+      ),
+    ]),
 
-    m(
-      "g.layer-overlays",
-      { key: "overlays", "data-role": "overlays" },
-      overlayBadges,
-    ),
+    layer("overlays", overlayBadges),
   ];
 }

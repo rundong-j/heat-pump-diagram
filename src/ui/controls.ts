@@ -11,6 +11,7 @@ import type {
   ThemeMode,
 } from "../model/types";
 import { getSceneMountCount } from "../diagram/scene";
+import { hudIcon } from "./hudIcon";
 import { PlaybackHud } from "./playback";
 
 const FONT_SCALE_OPTIONS = [
@@ -35,13 +36,7 @@ export type ControlPanelAttrs = {
 };
 
 function fireIcon(): m.Children {
-  return m(
-    "svg",
-    {
-      viewBox: "0 0 24 24",
-      "aria-hidden": "true",
-      focusable: "false",
-    },
+  return hudIcon(
     [
       m("path", {
         fill: "currentColor",
@@ -52,6 +47,7 @@ function fireIcon(): m.Children {
         d: "M12.2 11.6c1.5 1.8 2.4 3 2.4 4.8 0 2-1.5 3.4-3.3 3.4s-3.3-1.4-3.3-3.4c0-1.6.8-2.7 2.1-4.1.4 1.4 1.2 2.2 2.1-.7z",
       }),
     ],
+    { filled: true },
   );
 }
 
@@ -66,18 +62,7 @@ function snowflakeArm(): m.Children {
 }
 
 function snowflakeIcon(): m.Children {
-  return m(
-    "svg",
-    {
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: "currentColor",
-      "stroke-width": 1.7,
-      "stroke-linecap": "round",
-      "stroke-linejoin": "round",
-      "aria-hidden": "true",
-      focusable: "false",
-    },
+  return hudIcon(
     [0, 60, 120].map((deg) =>
       m("g", { transform: `rotate(${deg} 12 12)` }, snowflakeArm()),
     ),
@@ -85,99 +70,50 @@ function snowflakeIcon(): m.Children {
 }
 
 function miniSplitIcon(): m.Children {
-  return m(
-    "svg",
-    {
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: "currentColor",
-      "stroke-width": 1.6,
-      "stroke-linecap": "round",
-      "stroke-linejoin": "round",
-      "aria-hidden": "true",
-      focusable: "false",
-    },
+  return hudIcon(
     [
       m("rect", { x: 2.2, y: 7.5, width: 9.2, height: 11, rx: 1.2 }),
       m("circle", { cx: 6.8, cy: 13, r: 2.5 }),
       m("rect", { x: 13.2, y: 9.5, width: 8.6, height: 5.2, rx: 1.2 }),
       m("line", { x1: 15, y1: 12.1, x2: 20, y2: 12.1 }),
     ],
+    { strokeWidth: 1.6 },
   );
 }
 
 function ductedIcon(): m.Children {
-  return m(
-    "svg",
-    {
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: "currentColor",
-      "stroke-width": 1.6,
-      "stroke-linecap": "round",
-      "stroke-linejoin": "round",
-      "aria-hidden": "true",
-      focusable: "false",
-    },
+  return hudIcon(
     [
       m("path", { d: "M4 11 L12 4.2 L20 11" }),
       m("rect", { x: 6, y: 11, width: 12, height: 8.5 }),
       m("rect", { x: 10.2, y: 14.5, width: 3.6, height: 5 }),
     ],
+    { strokeWidth: 1.6 },
   );
 }
 
 function lightBulbIcon(): m.Children {
-  return m(
-    "svg",
-    {
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: "currentColor",
-      "stroke-width": 1.7,
-      "stroke-linecap": "round",
-      "stroke-linejoin": "round",
-      "aria-hidden": "true",
-      focusable: "false",
-    },
-    [
-      m("path", {
-        d: "M8.2 9.2 a3.8 4.6 0 1 1 7.6 0 c0 2.1-1.3 3.3-2.3 4.4 v1.6 H10.5 v-1.6 c-1-1.1-2.3-2.3-2.3-4.4 Z",
-      }),
-      m("line", { x1: 10.2, y1: 17.4, x2: 13.8, y2: 17.4 }),
-      m("line", { x1: 10.8, y1: 19.4, x2: 13.2, y2: 19.4 }),
-    ],
-  );
+  return hudIcon([
+    m("path", {
+      d: "M8.2 9.2 a3.8 4.6 0 1 1 7.6 0 c0 2.1-1.3 3.3-2.3 4.4 v1.6 H10.5 v-1.6 c-1-1.1-2.3-2.3-2.3-4.4 Z",
+    }),
+    m("line", { x1: 10.2, y1: 17.4, x2: 13.8, y2: 17.4 }),
+    m("line", { x1: 10.8, y1: 19.4, x2: 13.2, y2: 19.4 }),
+  ]);
 }
 
 function moonThemeIcon(): m.Children {
-  return m(
-    "svg",
-    {
-      viewBox: "0 0 24 24",
-      "aria-hidden": "true",
-      focusable: "false",
-    },
+  return hudIcon(
     m("path", {
       fill: "currentColor",
       d: "M15.2 3.4A9 9 0 1 0 20.6 16.2 7.1 7.1 0 0 1 15.2 3.4Z",
     }),
+    { filled: true },
   );
 }
 
 function simpleLoopIcon(): m.Children {
-  return m(
-    "svg",
-    {
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: "currentColor",
-      "stroke-width": 1.7,
-      "stroke-linecap": "round",
-      "stroke-linejoin": "round",
-      "aria-hidden": "true",
-      focusable: "false",
-    },
+  return hudIcon(
     m("path", {
       d: "M7 6.5 H17 A2.5 2.5 0 0 1 19.5 9 V15 A2.5 2.5 0 0 1 17 17.5 H7 A2.5 2.5 0 0 1 4.5 15 V9 A2.5 2.5 0 0 1 7 6.5 Z",
     }),
@@ -185,27 +121,14 @@ function simpleLoopIcon(): m.Children {
 }
 
 function reversingValveIcon(): m.Children {
-  return m(
-    "svg",
-    {
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: "currentColor",
-      "stroke-width": 1.7,
-      "stroke-linecap": "round",
-      "stroke-linejoin": "round",
-      "aria-hidden": "true",
-      focusable: "false",
-    },
-    [
-      m("rect", { x: 5.5, y: 7.5, width: 13, height: 9, rx: 1.8 }),
-      m("path", { d: "M9.5 10.5 L14.5 10.5 L17 13.5 L12 13.5 Z" }),
-      m("circle", { cx: 12, cy: 7.5, r: 1.2, fill: "currentColor", stroke: "none" }),
-      m("circle", { cx: 12, cy: 16.5, r: 1.2, fill: "currentColor", stroke: "none" }),
-      m("circle", { cx: 5.5, cy: 12, r: 1.2, fill: "currentColor", stroke: "none" }),
-      m("circle", { cx: 18.5, cy: 12, r: 1.2, fill: "currentColor", stroke: "none" }),
-    ],
-  );
+  return hudIcon([
+    m("rect", { x: 5.5, y: 7.5, width: 13, height: 9, rx: 1.8 }),
+    m("path", { d: "M9.5 10.5 L14.5 10.5 L17 13.5 L12 13.5 Z" }),
+    m("circle", { cx: 12, cy: 7.5, r: 1.2, fill: "currentColor", stroke: "none" }),
+    m("circle", { cx: 12, cy: 16.5, r: 1.2, fill: "currentColor", stroke: "none" }),
+    m("circle", { cx: 5.5, cy: 12, r: 1.2, fill: "currentColor", stroke: "none" }),
+    m("circle", { cx: 18.5, cy: 12, r: 1.2, fill: "currentColor", stroke: "none" }),
+  ]);
 }
 
 function fontSizeIcon(sizePx: number): m.Children {
@@ -217,55 +140,18 @@ function fontSizeIcon(sizePx: number): m.Children {
 }
 
 function simpleBoxStyleIcon(): m.Children {
-  return m(
-    "svg",
-    {
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: "currentColor",
-      "stroke-width": 1.7,
-      "stroke-linecap": "round",
-      "stroke-linejoin": "round",
-      "aria-hidden": "true",
-      focusable: "false",
-    },
-    m("rect", { x: 5.5, y: 5.5, width: 13, height: 13, rx: 1.5 }),
-  );
+  return hudIcon(m("rect", { x: 5.5, y: 5.5, width: 13, height: 13, rx: 1.5 }));
 }
 
 function abstractIconStyleIcon(): m.Children {
-  return m(
-    "svg",
-    {
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: "currentColor",
-      "stroke-width": 1.7,
-      "stroke-linecap": "round",
-      "stroke-linejoin": "round",
-      "aria-hidden": "true",
-      focusable: "false",
-    },
-    [
-      m("rect", { x: 4.5, y: 8, width: 8, height: 8, rx: 1.2 }),
-      m("circle", { cx: 17, cy: 12, r: 3.5 }),
-    ],
-  );
+  return hudIcon([
+    m("rect", { x: 4.5, y: 8, width: 8, height: 8, rx: 1.2 }),
+    m("circle", { cx: 17, cy: 12, r: 3.5 }),
+  ]);
 }
 
 function sketchStyleIcon(): m.Children {
-  return m(
-    "svg",
-    {
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: "currentColor",
-      "stroke-width": 1.7,
-      "stroke-linecap": "round",
-      "stroke-linejoin": "round",
-      "aria-hidden": "true",
-      focusable: "false",
-    },
+  return hudIcon(
     m("path", {
       d: "M5.5 17.5 C8 12.5 10 10 12.5 11.5 S16.5 8.5 18.5 6.5",
     }),
@@ -273,69 +159,33 @@ function sketchStyleIcon(): m.Children {
 }
 
 function crossSectionStyleIcon(): m.Children {
-  return m(
-    "svg",
-    {
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: "currentColor",
-      "stroke-width": 1.7,
-      "stroke-linecap": "round",
-      "stroke-linejoin": "round",
-      "aria-hidden": "true",
-      focusable: "false",
-    },
-    [
-      m("rect", { x: 4.5, y: 6.5, width: 15, height: 11, rx: 1.2 }),
-      m("line", {
-        x1: 12,
-        y1: 6.5,
-        x2: 12,
-        y2: 17.5,
-        "stroke-dasharray": "2.2 2.2",
-      }),
-      m("path", { d: "M12 8.5 L15.5 12 L12 15.5" }),
-    ],
-  );
+  return hudIcon([
+    m("rect", { x: 4.5, y: 6.5, width: 15, height: 11, rx: 1.2 }),
+    m("line", {
+      x1: 12,
+      y1: 6.5,
+      x2: 12,
+      y2: 17.5,
+      "stroke-dasharray": "2.2 2.2",
+    }),
+    m("path", { d: "M12 8.5 L15.5 12 L12 15.5" }),
+  ]);
 }
 
 function backgroundNoneIcon(): m.Children {
-  return m(
-    "svg",
-    {
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: "currentColor",
-      "stroke-width": 1.7,
-      "stroke-linecap": "round",
-      "stroke-linejoin": "round",
-      "aria-hidden": "true",
-      focusable: "false",
-    },
-    [
-      m("rect", { x: 5.5, y: 5.5, width: 13, height: 13, rx: 1.5 }),
-      m("line", { x1: 8, y1: 16, x2: 16, y2: 8 }),
-    ],
-  );
+  return hudIcon([
+    m("rect", { x: 5.5, y: 5.5, width: 13, height: 13, rx: 1.5 }),
+    m("line", { x1: 8, y1: 16, x2: 16, y2: 8 }),
+  ]);
 }
 
 function backgroundHouseIcon(): m.Children {
-  return m(
-    "svg",
-    {
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: "currentColor",
-      "stroke-width": 1.6,
-      "stroke-linecap": "round",
-      "stroke-linejoin": "round",
-      "aria-hidden": "true",
-      focusable: "false",
-    },
+  return hudIcon(
     [
       m("path", { d: "M4 11 L12 4.2 L20 11" }),
       m("rect", { x: 6, y: 11, width: 12, height: 8.5 }),
     ],
+    { strokeWidth: 1.6 },
   );
 }
 

@@ -1,5 +1,6 @@
 import m from "mithril";
 import type { PlaybackState } from "../model/types";
+import { hudIcon } from "./hudIcon";
 import { saveDiagramScreenshot } from "./screenshot";
 
 export type PlaybackHudAttrs = {
@@ -9,30 +10,20 @@ export type PlaybackHudAttrs = {
 
 function playPauseIcon(playing: boolean): m.Children {
   if (playing) {
-    return m(
-      "svg",
-      {
-        viewBox: "0 0 24 24",
-        "aria-hidden": "true",
-        focusable: "false",
-      },
+    return hudIcon(
       [
         m("rect", { x: 6.5, y: 5.5, width: 3.8, height: 13, rx: 0.8 }),
         m("rect", { x: 13.7, y: 5.5, width: 3.8, height: 13, rx: 0.8 }),
       ],
+      { filled: true },
     );
   }
 
-  return m(
-    "svg",
-    {
-      viewBox: "0 0 24 24",
-      "aria-hidden": "true",
-      focusable: "false",
-    },
+  return hudIcon(
     m("path", {
       d: "M8.4 5.8 L17.4 12 8.4 18.2 Z",
     }),
+    { filled: true },
   );
 }
 

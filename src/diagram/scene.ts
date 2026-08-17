@@ -2,6 +2,7 @@ import m from "mithril";
 import type { DiagramConfig } from "../model/types";
 import { SceneAnimation } from "../animation/timeline";
 import { minisplitScene } from "./layouts/minisplit";
+import { VIEWBOX } from "./viewport";
 
 export type SceneAttrs = {
   config: DiagramConfig;
@@ -46,7 +47,7 @@ export const DiagramScene: m.Component<SceneAttrs> = {
     return m(
       "svg.diagram-scene",
       {
-        viewBox: "0 0 960 540",
+        viewBox: VIEWBOX,
         role: "img",
         "aria-label": `Mini-split heat pump ${vnode.attrs.config.mode} cycle`,
         "data-component-style": vnode.attrs.config.componentStyle,
