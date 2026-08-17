@@ -546,43 +546,9 @@ body {
   color: var(--accent);
 }
 
-.font-size-control {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 10px;
-  font-size: 13px;
-}
-
-.font-size-buttons {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid var(--line);
-  background: var(--control-surface);
-  width: fit-content;
-}
-
-.font-size-buttons button {
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  padding: 6px 10px;
-  font: inherit;
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.font-size-buttons button:disabled {
-  color: #9aa3ad;
-  cursor: not-allowed;
-}
-
-.font-size-mark {
-  padding: 0 4px;
-  font-size: 14px;
+.square-switch-icon .font-scale-icon {
   font-weight: 650;
-  color: var(--ink);
+  line-height: 1;
   user-select: none;
 }
 

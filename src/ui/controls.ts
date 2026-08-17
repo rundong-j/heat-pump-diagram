@@ -13,9 +13,19 @@ import type {
 import { getSceneMountCount } from "../diagram/scene";
 import { PlaybackHud } from "./playback";
 
-const FONT_SCALE_MIN = 0.85;
-const FONT_SCALE_MAX = 1.3;
-const FONT_SCALE_STEP = 0.15;
+const FONT_SCALE_OPTIONS = [
+  { value: "0.85", scale: 0.85, label: "Small", iconSize: 11 },
+  { value: "1", scale: 1, label: "Normal", iconSize: 14 },
+  { value: "1.15", scale: 1.15, label: "Large", iconSize: 17 },
+  { value: "1.3", scale: 1.3, label: "XL", iconSize: 20 },
+] as const;
+
+type FontScaleStep = (typeof FONT_SCALE_OPTIONS)[number]["value"];
+
+function fontScaleStep(scale: number): FontScaleStep {
+  const rounded = Math.round(scale * 100) / 100;
+  return FONT_SCALE_OPTIONS.find((option) => option.scale === rounded)?.value ?? "1";
+}
 
 export type ControlPanelAttrs = {
   config: DiagramConfig;
@@ -203,6 +213,58 @@ function reversingValveIcon(): m.Children {
   );
 }
 
+function indoorUnitLeftIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 1.6,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    [
+      m("rect", { x: 3.2, y: 7.8, width: 7.4, height: 8.4, rx: 1.2 }),
+      m("circle", { cx: 6.9, cy: 12, r: 1.8 }),
+      m("rect", { x: 14.2, y: 10.2, width: 6.6, height: 3.6, rx: 1 }),
+      m("line", { x1: 10.6, y1: 12, x2: 14.2, y2: 12 }),
+    ],
+  );
+}
+
+function indoorUnitRightIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 1.6,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    [
+      m("rect", { x: 3.2, y: 10.2, width: 6.6, height: 3.6, rx: 1 }),
+      m("line", { x1: 9.8, y1: 12, x2: 13.4, y2: 12 }),
+      m("rect", { x: 13.4, y: 7.8, width: 7.4, height: 8.4, rx: 1.2 }),
+      m("circle", { cx: 17.1, cy: 12, r: 1.8 }),
+    ],
+  );
+}
+
+function fontSizeIcon(sizePx: number): m.Children {
+  return m(
+    "span.font-scale-icon",
+    { style: { fontSize: `${sizePx}px` }, "aria-hidden": "true" },
+    "Aa",
+  );
+}
+
 type SquareSwitchOption<T extends string> = {
   value: T;
   label: string;
@@ -329,6 +391,15 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
           }),
         ]),
         m("div.square-switch-row", [
+          squareCycleSwitch<IndoorSide>({
+            name: "Indoor unit",
+            value: config.indoorSide,
+            options: [
+              { value: "left", label: "Right", icon: indoorUnitRightIcon },
+              { value: "right", label: "Left", icon: indoorUnitLeftIcon },
+            ],
+            onChange: (indoorSide) => onConfigChange({ ...config, indoorSide }),
+          }),
           squareCycleSwitch<ThemeMode>({
             name: "Theme",
             value: config.theme,
@@ -338,48 +409,21 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
             ],
             onChange: (theme) => onConfigChange({ ...config, theme }),
           }),
-        ]),
-        m("div.font-size-control", [
-          m("span.font-size-label", "Font size"),
-          m("div.font-size-buttons", [
-            m(
-              "button",
-              {
-                type: "button",
-                "aria-label": "Decrease diagram font size",
-                disabled: config.fontScale <= FONT_SCALE_MIN,
-                onclick: () => {
-                  onConfigChange({
-                    ...config,
-                    fontScale: Math.max(
-                      FONT_SCALE_MIN,
-                      Math.round((config.fontScale - FONT_SCALE_STEP) * 100) / 100,
-                    ),
-                  });
-                },
-              },
-              "−",
-            ),
-            m("span.font-size-mark", { "aria-hidden": "true" }, "Aa"),
-            m(
-              "button",
-              {
-                type: "button",
-                "aria-label": "Increase diagram font size",
-                disabled: config.fontScale >= FONT_SCALE_MAX,
-                onclick: () => {
-                  onConfigChange({
-                    ...config,
-                    fontScale: Math.min(
-                      FONT_SCALE_MAX,
-                      Math.round((config.fontScale + FONT_SCALE_STEP) * 100) / 100,
-                    ),
-                  });
-                },
-              },
-              "+",
-            ),
-          ]),
+          squareCycleSwitch<FontScaleStep>({
+            name: "Font size",
+            value: fontScaleStep(config.fontScale),
+            options: FONT_SCALE_OPTIONS.map((option) => ({
+              value: option.value,
+              label: option.label,
+              icon: () => fontSizeIcon(option.iconSize),
+            })),
+            onChange: (step) => {
+              const scale =
+                FONT_SCALE_OPTIONS.find((option) => option.value === step)?.scale ??
+                1;
+              onConfigChange({ ...config, fontScale: scale });
+            },
+          }),
         ]),
         m("label", [
           "Component style",
@@ -442,24 +486,6 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
             [
               m("option", { value: "role" }, "Evaporator / Condenser"),
               m("option", { value: "location" }, "Indoor / Outdoor coil"),
-            ],
-          ),
-        ]),
-        m("label", [
-          "Indoor unit",
-          m(
-            "select",
-            {
-              value: config.indoorSide,
-              onchange: (event: Event) => {
-                const indoorSide = (event.target as HTMLSelectElement)
-                  .value as IndoorSide;
-                onConfigChange({ ...config, indoorSide });
-              },
-            },
-            [
-              m("option", { value: "left" }, "Left"),
-              m("option", { value: "right" }, "Right"),
             ],
           ),
         ]),
