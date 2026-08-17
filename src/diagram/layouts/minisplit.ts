@@ -322,8 +322,23 @@ export function minisplitScene(config: DiagramConfig): m.Children {
     return [overlayBadge(text, point.x, point.y, `badge-${station}`)];
   });
 
+  const indoorZoneX = flip ? 480 : 0;
+  const outdoorZoneX = flip ? 0 : 480;
+
   return [
     m("g.layer-background", { key: "background" }, [
+      m("rect.zone-fill.zone-indoor", {
+        x: indoorZoneX,
+        y: 0,
+        width: 480,
+        height: 540,
+      }),
+      m("rect.zone-fill.zone-outdoor", {
+        x: outdoorZoneX,
+        y: 0,
+        width: 480,
+        height: 540,
+      }),
       m("line.wall", { x1: 480, y1: 72, x2: 480, y2: 500 }),
       m(
         "text.zone-title",

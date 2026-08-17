@@ -15,7 +15,9 @@ const state: AppState = {
 
 export const App: m.Component = {
   view() {
-    return m("div.app", [
+    document.documentElement.dataset.theme = state.config.theme;
+
+    return m("div.app", { "data-theme": state.config.theme }, [
       m("div.diagram-stage", [
         m(DiagramScene, {
           key: "diagram-scene",

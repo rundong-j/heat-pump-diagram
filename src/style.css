@@ -1,6 +1,47 @@
 :root {
+  --office-chrome-pad: 36px;
+  font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+:root,
+:root[data-theme="light"] {
+  --bg: #e7eaee;
+  --stage: #f4f6f8;
+  --stage-border: #c5ccd4;
+  --panel: #f4f1ea;
+  --ink: #1a1c1e;
+  --muted: #5c646c;
+  --line: #d8d2c6;
+  --accent: #2f6f6a;
+  --accent-ink: #f4f1ea;
+  --highlight: #b08a3a;
+  --pipe-hot: #c46f2e;
+  --pipe-cold: #3d8fa3;
+  --unit-fill: #ffffff;
+  --unit-stroke: #6b7784;
+  --label: #1f2933;
+  --zone-title: #5c6670;
+  --wall: #9aa3ad;
+  --zone-warm: #f3e4d4;
+  --zone-cool: #d7e6ee;
+  --particle-fill: #ffffff;
+  --particle-stroke: #1a1c1e;
+  --unit-face: #eef2f5;
+  --unit-face-stroke: #8b98a5;
+  --unit-vent: #c5ced6;
+  --fan-blade: #5c6670;
+  --fan-hub: #8b98a5;
+  --machine-fill: #e8edf1;
+  --machine-line: #6b7784;
+  --badge-fill: #ffffff;
+  --badge-stroke: #9aa3ad;
+  --control-surface: #fff;
+}
+
+:root[data-theme="dark"] {
   --bg: #121417;
   --stage: #1c2127;
+  --stage-border: #2e3640;
   --panel: #f4f1ea;
   --ink: #1a1c1e;
   --muted: #5c646c;
@@ -13,8 +54,22 @@
   --unit-fill: #252c34;
   --unit-stroke: #8b98a5;
   --label: #e6edf2;
-  --office-chrome-pad: 36px;
-  font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --zone-title: #9aa6b2;
+  --wall: #4a5561;
+  --zone-warm: #2a221c;
+  --zone-cool: #172228;
+  --particle-fill: #f4f1ea;
+  --particle-stroke: #121417;
+  --unit-face: #1b2128;
+  --unit-face-stroke: #5f6b76;
+  --unit-vent: #3a4450;
+  --fan-blade: #c5d0da;
+  --fan-hub: #8b98a5;
+  --machine-fill: #323c47;
+  --machine-line: #9aa6b2;
+  --badge-fill: #121417;
+  --badge-stroke: #4a5561;
+  --control-surface: #fff;
 }
 
 * {
@@ -37,6 +92,8 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
   height: 100%;
+  background: var(--bg);
+  color: var(--ink);
 }
 
 .diagram-stage {
@@ -50,11 +107,31 @@ body {
   width: min(100%, 960px);
   height: auto;
   background: var(--stage);
-  border: 1px solid #2e3640;
+  border: 1px solid var(--stage-border);
 }
 
 .diagram-scene.is-highlighted {
   border-color: var(--highlight);
+}
+
+.zone-fill {
+  stroke: none;
+}
+
+.diagram-scene[data-mode="heating"] .zone-indoor {
+  fill: var(--zone-warm);
+}
+
+.diagram-scene[data-mode="heating"] .zone-outdoor {
+  fill: var(--zone-cool);
+}
+
+.diagram-scene[data-mode="cooling"] .zone-indoor {
+  fill: var(--zone-cool);
+}
+
+.diagram-scene[data-mode="cooling"] .zone-outdoor {
+  fill: var(--zone-warm);
 }
 
 .scene-caption,
@@ -72,11 +149,11 @@ body {
   font-size: 13px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  fill: #9aa6b2;
+  fill: var(--zone-title);
 }
 
 .wall {
-  stroke: #4a5561;
+  stroke: var(--wall);
   stroke-width: 2;
   stroke-dasharray: 7 8;
 }
@@ -112,8 +189,8 @@ body {
 }
 
 .particle {
-  fill: #f4f1ea;
-  stroke: #121417;
+  fill: var(--particle-fill);
+  stroke: var(--particle-stroke);
   stroke-width: 1;
   will-change: transform;
 }
@@ -125,13 +202,13 @@ body {
 }
 
 .unit-face {
-  fill: #1b2128;
-  stroke: #5f6b76;
+  fill: var(--unit-face);
+  stroke: var(--unit-face-stroke);
   stroke-width: 1;
 }
 
 .unit-vent {
-  fill: #3a4450;
+  fill: var(--unit-vent);
 }
 
 .fan-ring,
@@ -142,12 +219,12 @@ body {
 }
 
 .fan-blades {
-  fill: #c5d0da;
+  fill: var(--fan-blade);
   will-change: transform;
 }
 
 .fan-hub {
-  fill: #8b98a5;
+  fill: var(--fan-hub);
 }
 
 .indoor-coil .coil-fins {
@@ -169,7 +246,7 @@ body {
 }
 
 .compressor-can {
-  fill: #323c47;
+  fill: var(--machine-fill);
   stroke: var(--unit-stroke);
   stroke-width: 1.5;
 }
@@ -180,19 +257,19 @@ body {
 }
 
 .compressor-pulse line {
-  stroke: #9aa6b2;
+  stroke: var(--machine-line);
   stroke-width: 1.5;
 }
 
 .txv-body,
 .txv-head {
-  fill: #3a4450;
+  fill: var(--machine-fill);
   stroke: var(--unit-stroke);
   stroke-width: 1.5;
 }
 
 .rv-body {
-  fill: #323c47;
+  fill: var(--machine-fill);
   stroke: var(--unit-stroke);
   stroke-width: 1.5;
 }
@@ -212,8 +289,8 @@ body {
 }
 
 .overlay-badge-bg {
-  fill: #121417;
-  stroke: #4a5561;
+  fill: var(--badge-fill);
+  stroke: var(--badge-stroke);
   stroke-width: 1;
 }
 
@@ -335,8 +412,18 @@ body {
 .control-panel select {
   padding: 6px 8px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--control-surface);
   color: var(--ink);
+}
+
+.control-panel select:disabled {
+  color: #9aa3ad;
+  background: #eceff2;
+  cursor: not-allowed;
+}
+
+.control-panel select option:disabled {
+  color: #9aa3ad;
 }
 
 .mount-count {
@@ -356,7 +443,7 @@ body {
 
 .playback-hud button {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--control-surface);
   color: var(--ink);
   padding: 6px 10px;
   font: inherit;

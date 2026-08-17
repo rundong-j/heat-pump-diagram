@@ -7,6 +7,7 @@ import type {
   IndoorSide,
   OverlayToggles,
   SystemType,
+  ThemeMode,
 } from "../model/types";
 import { getSceneMountCount } from "../diagram/scene";
 import { PlaybackHud } from "./playback";
@@ -84,6 +85,7 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
             "select",
             {
               value: config.systemType,
+              disabled: true,
               onchange: (event: Event) => {
                 const systemType = (event.target as HTMLSelectElement)
                   .value as SystemType;
@@ -92,7 +94,7 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
             },
             [
               m("option", { value: "minisplit" }, "Mini-split"),
-              m("option", { value: "ducted" }, "Ducted split"),
+              m("option", { value: "ducted", disabled: true }, "Ducted split"),
             ],
           ),
         ]),
@@ -114,6 +116,23 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
           ),
         ]),
         m("label", [
+          "Theme",
+          m(
+            "select",
+            {
+              value: config.theme,
+              onchange: (event: Event) => {
+                const theme = (event.target as HTMLSelectElement).value as ThemeMode;
+                onConfigChange({ ...config, theme });
+              },
+            },
+            [
+              m("option", { value: "light" }, "Light"),
+              m("option", { value: "dark" }, "Dark"),
+            ],
+          ),
+        ]),
+        m("label", [
           "Component style",
           m(
             "select",
@@ -128,8 +147,16 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
             [
               m("option", { value: "simpleBox" }, "Simple box"),
               m("option", { value: "icon" }, "Abstract icon"),
-              m("option", { value: "sketch" }, "Realistic sketch"),
-              m("option", { value: "crossSection" }, "Cross-section"),
+              m(
+                "option",
+                { value: "sketch", disabled: true },
+                "Realistic sketch",
+              ),
+              m(
+                "option",
+                { value: "crossSection", disabled: true },
+                "Cross-section",
+              ),
             ],
           ),
         ]),
@@ -139,6 +166,7 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
             "select",
             {
               value: config.background,
+              disabled: true,
               onchange: (event: Event) => {
                 const background = (event.target as HTMLSelectElement)
                   .value as BackgroundStyle;
@@ -147,7 +175,7 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
             },
             [
               m("option", { value: "none" }, "None"),
-              m("option", { value: "house" }, "House context"),
+              m("option", { value: "house", disabled: true }, "House context"),
             ],
           ),
         ]),

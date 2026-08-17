@@ -3,6 +3,7 @@ export type CycleMode = "cooling" | "heating";
 export type ComponentStyle = "simpleBox" | "icon" | "sketch" | "crossSection";
 export type BackgroundStyle = "none" | "house";
 export type IndoorSide = "left" | "right";
+export type ThemeMode = "light" | "dark";
 
 export type OverlayToggles = {
   labels: boolean;
@@ -24,6 +25,7 @@ export type DiagramConfig = {
   background: BackgroundStyle;
   showReversingValve: boolean;
   indoorSide: IndoorSide;
+  theme: ThemeMode;
   overlays: OverlayToggles;
   playback: PlaybackState;
 };
@@ -36,6 +38,7 @@ export function createDefaultConfig(): DiagramConfig {
     background: "none",
     showReversingValve: false,
     indoorSide: "right",
+    theme: "light",
     overlays: {
       labels: true,
       pressure: false,
