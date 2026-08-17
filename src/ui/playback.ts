@@ -64,6 +64,16 @@ export const PlaybackHud: m.Component<PlaybackHudAttrs> = {
         }),
         m("span.speed-value", `${playback.speed.toFixed(2)}×`),
       ]),
+      m(
+        "button.screenshot-button",
+        {
+          type: "button",
+          disabled: true,
+          title: "Screenshot (unavailable)",
+          "aria-label": "Screenshot. Unavailable.",
+        },
+        "screenshot",
+      ),
     ]);
   },
 };

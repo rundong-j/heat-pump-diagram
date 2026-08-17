@@ -669,8 +669,14 @@ body {
   color: var(--accent-ink);
 }
 
+.playback-hud button:disabled {
+  color: #9aa3ad;
+  background: #eceff2;
+  cursor: not-allowed;
+}
+
 .playback-hud label.speed-control {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   flex-direction: row;
   align-items: center;
   gap: 8px;
