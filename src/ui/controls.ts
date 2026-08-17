@@ -117,6 +117,49 @@ function ductedIcon(): m.Children {
   );
 }
 
+function sunThemeIcon(): m.Children {
+  const cx = 12;
+  const cy = 12;
+  const rays = [0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
+    const rad = (deg * Math.PI) / 180;
+    return m("line", {
+      x1: cx + Math.cos(rad) * 6.3,
+      y1: cy + Math.sin(rad) * 6.3,
+      x2: cx + Math.cos(rad) * 9.5,
+      y2: cy + Math.sin(rad) * 9.5,
+    });
+  });
+
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 1.7,
+      "stroke-linecap": "round",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    [m("circle", { cx, cy, r: 3.8 }), ...rays],
+  );
+}
+
+function moonThemeIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    m("path", {
+      fill: "currentColor",
+      d: "M15.2 3.4A9 9 0 1 0 20.6 16.2 7.1 7.1 0 0 1 15.2 3.4Z",
+    }),
+  );
+}
+
 type SquareSwitchOption<T extends string> = {
   value: T;
   label: string;
@@ -247,22 +290,16 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
             onChange: (mode) => onConfigChange({ ...config, mode }),
           }),
         ]),
-        m("label", [
-          "Theme",
-          m(
-            "select",
-            {
-              value: config.theme,
-              onchange: (event: Event) => {
-                const theme = (event.target as HTMLSelectElement).value as ThemeMode;
-                onConfigChange({ ...config, theme });
-              },
-            },
-            [
-              m("option", { value: "light" }, "Light"),
-              m("option", { value: "dark" }, "Dark"),
+        m("div.square-switch-row", [
+          squareCycleSwitch<ThemeMode>({
+            name: "Theme",
+            value: config.theme,
+            options: [
+              { value: "light", label: "Light", icon: sunThemeIcon },
+              { value: "dark", label: "Dark", icon: moonThemeIcon },
             ],
-          ),
+            onChange: (theme) => onConfigChange({ ...config, theme }),
+          }),
         ]),
         m("div.font-size-control", [
           m("span.font-size-label", "Font size"),

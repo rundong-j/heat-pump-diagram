@@ -547,6 +547,14 @@ body {
   color: var(--pipe-cold);
 }
 
+.square-switch[data-value="light"] .square-switch-icon {
+  color: var(--weather-sun);
+}
+
+.square-switch[data-value="dark"] .square-switch-icon {
+  color: #5c6670;
+}
+
 .font-size-control {
   display: flex;
   flex-direction: column;
