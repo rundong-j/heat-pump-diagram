@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: "/diagram-generator/",
+  base: "/heat-pump-diagram/",
   server: {
     port: 5173,
   },
