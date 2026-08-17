@@ -542,6 +542,10 @@ body {
   color: #5c6670;
 }
 
+.square-switch[data-value="on"] .square-switch-icon {
+  color: var(--accent);
+}
+
 .font-size-control {
   display: flex;
   flex-direction: column;

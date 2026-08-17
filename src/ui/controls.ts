@@ -160,6 +160,49 @@ function moonThemeIcon(): m.Children {
   );
 }
 
+function simpleLoopIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 1.7,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    m("path", {
+      d: "M7 6.5 H17 A2.5 2.5 0 0 1 19.5 9 V15 A2.5 2.5 0 0 1 17 17.5 H7 A2.5 2.5 0 0 1 4.5 15 V9 A2.5 2.5 0 0 1 7 6.5 Z",
+    }),
+  );
+}
+
+function reversingValveIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 1.7,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    [
+      m("rect", { x: 5.5, y: 7.5, width: 13, height: 9, rx: 1.8 }),
+      m("path", { d: "M9.5 10.5 L14.5 10.5 L17 13.5 L12 13.5 Z" }),
+      m("circle", { cx: 12, cy: 7.5, r: 1.2, fill: "currentColor", stroke: "none" }),
+      m("circle", { cx: 12, cy: 16.5, r: 1.2, fill: "currentColor", stroke: "none" }),
+      m("circle", { cx: 5.5, cy: 12, r: 1.2, fill: "currentColor", stroke: "none" }),
+      m("circle", { cx: 18.5, cy: 12, r: 1.2, fill: "currentColor", stroke: "none" }),
+    ],
+  );
+}
+
 type SquareSwitchOption<T extends string> = {
   value: T;
   label: string;
@@ -269,6 +312,20 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
               { value: "cooling", label: "Cooling", icon: snowflakeIcon },
             ],
             onChange: (mode) => onConfigChange({ ...config, mode }),
+          }),
+          squareCycleSwitch<"off" | "on">({
+            name: "Reversing valve",
+            value: config.showReversingValve ? "on" : "off",
+            disabled: true,
+            options: [
+              { value: "off", label: "Off", icon: simpleLoopIcon },
+              { value: "on", label: "On", icon: reversingValveIcon },
+            ],
+            onChange: (valve) =>
+              onConfigChange({
+                ...config,
+                showReversingValve: valve === "on",
+              }),
           }),
         ]),
         m("div.square-switch-row", [
@@ -405,19 +462,6 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
               m("option", { value: "right" }, "Right"),
             ],
           ),
-        ]),
-        m("label.checkbox", [
-          m("input", {
-            type: "checkbox",
-            checked: config.showReversingValve,
-            onchange: (event: Event) => {
-              onConfigChange({
-                ...config,
-                showReversingValve: (event.target as HTMLInputElement).checked,
-              });
-            },
-          }),
-          "Reversing valve",
         ]),
       ]),
 
