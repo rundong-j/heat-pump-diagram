@@ -74,7 +74,50 @@ function snowflakeIcon(): m.Children {
   );
 }
 
-type CycleSwitchOption<T extends string> = {
+function miniSplitIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 1.6,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    [
+      m("rect", { x: 2.2, y: 7.5, width: 9.2, height: 11, rx: 1.2 }),
+      m("circle", { cx: 6.8, cy: 13, r: 2.5 }),
+      m("rect", { x: 13.2, y: 9.5, width: 8.6, height: 5.2, rx: 1.2 }),
+      m("line", { x1: 15, y1: 12.1, x2: 20, y2: 12.1 }),
+    ],
+  );
+}
+
+function ductedIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 1.6,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    [
+      m("path", { d: "M4 11 L12 4.2 L20 11" }),
+      m("rect", { x: 6, y: 11, width: 12, height: 8.5 }),
+      m("rect", { x: 10.2, y: 14.5, width: 3.6, height: 5 }),
+    ],
+  );
+}
+
+type SquareSwitchOption<T extends string> = {
   value: T;
   label: string;
   icon: () => m.Children;
@@ -83,8 +126,9 @@ type CycleSwitchOption<T extends string> = {
 function squareCycleSwitch<T extends string>(opts: {
   name: string;
   value: T;
-  options: CycleSwitchOption<T>[];
+  options: SquareSwitchOption<T>[];
   onChange: (value: T) => void;
+  disabled?: boolean;
 }): m.Children {
   const index = Math.max(
     0,
@@ -92,17 +136,28 @@ function squareCycleSwitch<T extends string>(opts: {
   );
   const current = opts.options[index];
   const next = opts.options[(index + 1) % opts.options.length];
+  const disabled = Boolean(opts.disabled);
 
   return m(
     "button.square-switch",
     {
       type: "button",
+      disabled,
       "data-value": current.value,
-      title: `${opts.name}: ${current.label}`,
-      "aria-label": `${opts.name}: ${current.label}. Click to switch to ${next.label}.`,
-      onclick: () => opts.onChange(next.value),
+      title: disabled
+        ? `${opts.name}: ${current.label} (unavailable)`
+        : `${opts.name}: ${current.label}`,
+      "aria-label": disabled
+        ? `${opts.name}: ${current.label}. Unavailable.`
+        : `${opts.name}: ${current.label}. Click to switch to ${next.label}.`,
+      onclick: () => {
+        if (!disabled) {
+          opts.onChange(next.value);
+        }
+      },
     },
     [
+      m("span.square-switch-title", opts.name),
       m("span.square-switch-icon", current.icon()),
       m("span.square-switch-label", current.label),
     ],
@@ -171,26 +226,17 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
 
       m("section", [
         m("h2", "System"),
-        m("label", [
-          "Type",
-          m(
-            "select",
-            {
-              value: config.systemType,
-              disabled: true,
-              onchange: (event: Event) => {
-                const systemType = (event.target as HTMLSelectElement)
-                  .value as SystemType;
-                onConfigChange({ ...config, systemType });
-              },
-            },
-            [
-              m("option", { value: "minisplit" }, "Mini-split"),
-              m("option", { value: "ducted", disabled: true }, "Ducted split"),
-            ],
-          ),
-        ]),
         m("div.square-switch-row", [
+          squareCycleSwitch<SystemType>({
+            name: "Type",
+            value: config.systemType,
+            disabled: true,
+            options: [
+              { value: "minisplit", label: "Mini-split", icon: miniSplitIcon },
+              { value: "ducted", label: "Ducted", icon: ductedIcon },
+            ],
+            onChange: (systemType) => onConfigChange({ ...config, systemType }),
+          }),
           squareCycleSwitch<CycleMode>({
             name: "Cycle",
             value: config.mode,

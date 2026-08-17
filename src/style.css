@@ -471,9 +471,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  padding: 8px 4px 7px;
+  justify-content: space-between;
+  gap: 2px;
+  padding: 6px 4px 6px;
   border: 1px solid var(--line);
   background: var(--control-surface);
   color: var(--ink);
@@ -491,6 +491,31 @@ body {
   outline-offset: 2px;
 }
 
+.square-switch:disabled {
+  color: #9aa3ad;
+  background: #eceff2;
+  cursor: not-allowed;
+}
+
+.square-switch:disabled:hover {
+  border-color: var(--line);
+}
+
+.square-switch-title {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  line-height: 1.15;
+  text-align: center;
+}
+
+.square-switch:disabled .square-switch-title {
+  color: #9aa3ad;
+}
+
 .square-switch-icon {
   flex: 1;
   display: flex;
@@ -501,14 +526,14 @@ body {
 }
 
 .square-switch-icon svg {
-  width: 58%;
-  height: 58%;
+  width: 70%;
+  height: 70%;
   display: block;
 }
 
 .square-switch-label {
   flex: 0 0 auto;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 650;
   line-height: 1.15;
   text-align: center;
