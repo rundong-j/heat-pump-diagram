@@ -1,11 +1,39 @@
 import m from "mithril";
 import type { PlaybackState } from "../model/types";
-import { restartPlayback, seekPlayback } from "../animation/timeline";
 
 export type PlaybackHudAttrs = {
   playback: PlaybackState;
   onChange: (playback: PlaybackState) => void;
 };
+
+function playPauseIcon(playing: boolean): m.Children {
+  if (playing) {
+    return m(
+      "svg",
+      {
+        viewBox: "0 0 24 24",
+        "aria-hidden": "true",
+        focusable: "false",
+      },
+      [
+        m("rect", { x: 6.5, y: 5.5, width: 3.8, height: 13, rx: 0.8 }),
+        m("rect", { x: 13.7, y: 5.5, width: 3.8, height: 13, rx: 0.8 }),
+      ],
+    );
+  }
+
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    m("path", {
+      d: "M8.4 5.8 L17.4 12 8.4 18.2 Z",
+    }),
+  );
+}
 
 export const PlaybackHud: m.Component<PlaybackHudAttrs> = {
   view(vnode) {
@@ -13,33 +41,13 @@ export const PlaybackHud: m.Component<PlaybackHudAttrs> = {
 
     return m("div.playback-hud", [
       m(
-        "button",
+        "button.playback-toggle",
         {
           type: "button",
-          class: playback.playing ? "is-active" : "",
-          onclick: () => onChange({ ...playback, playing: true }),
+          "aria-label": playback.playing ? "Pause" : "Play",
+          onclick: () => onChange({ ...playback, playing: !playback.playing }),
         },
-        "Play",
-      ),
-      m(
-        "button",
-        {
-          type: "button",
-          class: !playback.playing ? "is-active" : "",
-          onclick: () => onChange({ ...playback, playing: false }),
-        },
-        "Pause",
-      ),
-      m(
-        "button",
-        {
-          type: "button",
-          onclick: () => {
-            restartPlayback();
-            onChange({ ...playback, playing: true });
-          },
-        },
-        "Restart",
+        playPauseIcon(playback.playing),
       ),
       m("label.speed-control", [
         "Speed",
@@ -55,22 +63,6 @@ export const PlaybackHud: m.Component<PlaybackHudAttrs> = {
           },
         }),
         m("span.speed-value", `${playback.speed.toFixed(2)}×`),
-      ]),
-      m("label.scrub-control", [
-        "Scrub",
-        m("input", {
-          type: "range",
-          min: "0",
-          max: "1",
-          step: "0.001",
-          value: "0",
-          "data-role": "scrubber",
-          oninput: (event: InputEvent) => {
-            const progress = Number((event.target as HTMLInputElement).value);
-            seekPlayback(progress);
-            onChange({ ...playback, playing: false });
-          },
-        }),
       ]),
     ]);
   },

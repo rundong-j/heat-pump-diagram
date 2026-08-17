@@ -241,25 +241,6 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
       ),
 
       m("section", [
-        m("h2", "Scene stability"),
-        m("p.mount-count", [
-          "SVG mounts: ",
-          m("strong", String(getSceneMountCount())),
-          m("span.hint", " Must stay 1 while toggling highlight or playback."),
-        ]),
-        m("label.checkbox", [
-          m("input", {
-            type: "checkbox",
-            checked: debugHighlight,
-            onchange: (event: Event) => {
-              onDebugHighlightChange((event.target as HTMLInputElement).checked);
-            },
-          }),
-          "Highlight viewport (dummy flag)",
-        ]),
-      ]),
-
-      m("section", [
         m("h2", "Playback"),
         m(PlaybackHud, {
           playback: config.playback,
@@ -464,6 +445,25 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
           (overlays) => onConfigChange({ ...config, overlays }),
           true,
         ),
+      ]),
+
+      m("section", [
+        m("h2", "Scene stability"),
+        m("p.mount-count", [
+          "SVG mounts: ",
+          m("strong", String(getSceneMountCount())),
+          m("span.hint", " Must stay 1 while toggling highlight or playback."),
+        ]),
+        m("label.checkbox", [
+          m("input", {
+            type: "checkbox",
+            checked: debugHighlight,
+            onchange: (event: Event) => {
+              onDebugHighlightChange((event.target as HTMLInputElement).checked);
+            },
+          }),
+          "Highlight viewport (dummy flag)",
+        ]),
       ]),
     ]);
   },

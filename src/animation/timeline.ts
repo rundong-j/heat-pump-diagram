@@ -7,16 +7,6 @@ gsap.registerPlugin(MotionPathPlugin);
 
 const LOOP_SECONDS = 28;
 
-let active: SceneAnimation | null = null;
-
-export function restartPlayback(): void {
-  active?.restart();
-}
-
-export function seekPlayback(progress: number): void {
-  active?.seek(progress);
-}
-
 export class SceneAnimation {
   private mm: ReturnType<typeof gsap.matchMedia> | null = null;
   private flow: gsap.core.Timeline | null = null;
@@ -28,7 +18,6 @@ export class SceneAnimation {
     this.destroy();
     this.svg = svg;
     this.topology = topologyKey(config);
-    active = this;
     this.mm = gsap.matchMedia();
 
     this.mm.add("(prefers-reduced-motion: reduce)", () => {
@@ -106,22 +95,7 @@ export class SceneAnimation {
     }
   }
 
-  restart(): void {
-    for (const tl of this.timelines()) {
-      tl.restart();
-    }
-  }
-
-  seek(progress: number): void {
-    this.flow?.progress(progress);
-    this.flow?.pause();
-    this.machines?.pause();
-  }
-
   destroy(): void {
-    if (active === this) {
-      active = null;
-    }
     this.mm?.revert();
     this.mm = null;
     this.flow = null;
@@ -143,7 +117,6 @@ function buildFlowTimeline(svg: SVGSVGElement, reversed: boolean): gsap.core.Tim
   const tl = gsap.timeline({
     paused: true,
     repeat: -1,
-    onUpdate: () => syncScrubber(tl),
   });
 
   if (!loop || particles.length === 0) {
@@ -222,12 +195,4 @@ function buildMachineTimeline(svg: SVGSVGElement): gsap.core.Timeline {
   }
 
   return tl;
-}
-
-function syncScrubber(flow: gsap.core.Timeline): void {
-  const input = document.querySelector<HTMLInputElement>("[data-role='scrubber']");
-  if (!input || document.activeElement === input) {
-    return;
-  }
-  input.value = String(flow.progress());
 }
