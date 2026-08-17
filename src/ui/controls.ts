@@ -212,7 +212,6 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
             "select",
             {
               value: config.background,
-              disabled: true,
               onchange: (event: Event) => {
                 const background = (event.target as HTMLSelectElement)
                   .value as BackgroundStyle;
@@ -221,7 +220,7 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
             },
             [
               m("option", { value: "none" }, "None"),
-              m("option", { value: "house", disabled: true }, "House context"),
+              m("option", { value: "house" }, "House context"),
             ],
           ),
         ]),

@@ -25,6 +25,8 @@
   --wall: #9aa3ad;
   --zone-warm: #f3e4d4;
   --zone-cool: #d7e6ee;
+  --house-fill: rgba(255, 255, 255, 0.35);
+  --house-stroke: #5c6670;
   --particle-fill: #ffffff;
   --particle-stroke: #1a1c1e;
   --unit-face: #eef2f5;
@@ -59,6 +61,8 @@
   --wall: #4a5561;
   --zone-warm: #2a221c;
   --zone-cool: #172228;
+  --house-fill: rgba(255, 255, 255, 0.04);
+  --house-stroke: #c5d0da;
   --particle-fill: #f4f1ea;
   --particle-stroke: #121417;
   --unit-face: #1b2128;
@@ -157,6 +161,19 @@ body {
   stroke: var(--wall);
   stroke-width: 2;
   stroke-dasharray: 7 8;
+}
+
+.house-body,
+.house-roof {
+  fill: var(--house-fill);
+  stroke: var(--house-stroke);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.diagram-scene:not([data-background="house"]) .house-context {
+  visibility: hidden;
 }
 
 .pipe {

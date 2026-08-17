@@ -138,9 +138,9 @@ function reversingValveLayout(heating: boolean): CircuitLayout {
     arrows: [
       { x: 690, y: 310, rotation: -90 },
       { x: 840, y: 328, rotation: 90 },
-      { x: 400, y: 405, rotation: 180 },
+      { x: 370, y: 405, rotation: 180 },
       { x: 145, y: 328, rotation: -90 },
-      { x: 400, y: 220, rotation: 0 },
+      { x: 370, y: 220, rotation: 0 },
       { x: 720, y: 310, rotation: 90 },
     ],
     stations: assignStations(
@@ -170,9 +170,9 @@ function simpleBoxLayout(heating: boolean): CircuitLayout {
     expansion: { x: 660, y: 405 },
     reversingValve: { x: 700, y: 250 },
     arrows: [
-      { x: 400, y: 250, rotation: 0 },
+      { x: 370, y: 250, rotation: 0 },
       { x: 840, y: 328, rotation: 90 },
-      { x: 400, y: 405, rotation: 180 },
+      { x: 370, y: 405, rotation: 180 },
       { x: 145, y: 328, rotation: -90 },
     ],
     stations: assignStations(
@@ -204,9 +204,9 @@ function iconLayout(heating: boolean): CircuitLayout {
     arrows: [
       { x: 700, y: 320, rotation: -90 },
       { x: 840, y: 328, rotation: 90 },
-      { x: 400, y: 405, rotation: 180 },
+      { x: 370, y: 405, rotation: 180 },
       { x: 145, y: 312, rotation: -90 },
-      { x: 400, y: 220, rotation: 0 },
+      { x: 370, y: 220, rotation: 0 },
     ],
     stations: assignStations(
       {
@@ -271,6 +271,26 @@ function label(
     extraClass ? `text.diagram-label.${extraClass}` : "text.diagram-label",
     { x, y, "text-anchor": anchor },
     text,
+  );
+}
+
+function houseContext(flip: boolean): m.Children {
+  // Canonical indoor-left geometry; mirrored when indoor is on the right.
+  // Body runs past the paired arrows so indoor coil + feed lines read as inside.
+  return m(
+    "g.house-context",
+    {
+      "data-role": "house",
+      transform: flip ? `translate(${VIEWBOX_WIDTH} 0) scale(-1 1)` : undefined,
+    },
+    [
+      m("path.house-body", {
+        d: "M48,188 H412 V468 H48 Z",
+      }),
+      m("path.house-roof", {
+        d: "M36,188 L230,78 L424,188 Z",
+      }),
+    ],
   );
 }
 
@@ -346,6 +366,7 @@ export function minisplitScene(config: DiagramConfig): m.Children {
         width: 480,
         height: 540,
       }),
+      houseContext(flip),
       m("line.wall", { x1: 480, y1: 72, x2: 480, y2: 500 }),
       m(
         "text.zone-title",

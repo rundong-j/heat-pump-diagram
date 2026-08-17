@@ -69,6 +69,7 @@ export class SceneAnimation {
     this.svg.classList.toggle("hide-reversing-valve", !config.showReversingValve);
     this.svg.dataset.componentStyle = config.componentStyle;
     this.svg.dataset.mode = config.mode;
+    this.svg.dataset.background = config.background;
 
     const nextTopology = topologyKey(config);
     if (this.topology !== nextTopology) {

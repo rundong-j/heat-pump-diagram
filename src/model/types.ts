@@ -36,7 +36,7 @@ export function createDefaultConfig(): DiagramConfig {
     systemType: "minisplit",
     mode: "heating",
     componentStyle: "simpleBox",
-    background: "none",
+    background: "house",
     showReversingValve: false,
     indoorSide: "right",
     theme: "light",
