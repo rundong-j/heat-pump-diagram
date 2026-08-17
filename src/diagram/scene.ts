@@ -52,6 +52,9 @@ export const DiagramScene: m.Component<SceneAttrs> = {
         "data-component-style": vnode.attrs.config.componentStyle,
         "data-indoor-side": vnode.attrs.config.indoorSide,
         "data-mode": vnode.attrs.config.mode,
+        style: {
+          "--font-scale": String(vnode.attrs.config.fontScale),
+        },
       },
       minisplitScene(vnode.attrs.config),
     );

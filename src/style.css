@@ -1,5 +1,6 @@
 :root {
   --office-chrome-pad: 36px;
+  --font-scale: 1;
   font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
@@ -141,12 +142,12 @@ body {
 }
 
 .scene-caption {
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale));
   font-weight: 650;
 }
 
 .zone-title {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   fill: var(--zone-title);
@@ -284,7 +285,7 @@ body {
 
 .diagram-label {
   fill: var(--label);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   font-family: inherit;
 }
 
@@ -297,7 +298,7 @@ body {
 .overlay-badge-text {
   fill: var(--label);
   stroke: none;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   font-weight: 600;
   font-family: inherit;
 }
@@ -311,7 +312,7 @@ body {
 .box-label {
   fill: var(--label);
   stroke: none;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
   font-family: inherit;
 }
 
@@ -396,6 +397,46 @@ body {
   gap: 6px;
   margin-bottom: 10px;
   font-size: 13px;
+}
+
+.font-size-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.font-size-buttons {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  background: var(--control-surface);
+  width: fit-content;
+}
+
+.font-size-buttons button {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.font-size-buttons button:disabled {
+  color: #9aa3ad;
+  cursor: not-allowed;
+}
+
+.font-size-mark {
+  padding: 0 4px;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--ink);
+  user-select: none;
 }
 
 .control-panel label.checkbox {

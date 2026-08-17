@@ -12,6 +12,10 @@ import type {
 import { getSceneMountCount } from "../diagram/scene";
 import { PlaybackHud } from "./playback";
 
+const FONT_SCALE_MIN = 0.85;
+const FONT_SCALE_MAX = 1.3;
+const FONT_SCALE_STEP = 0.15;
+
 export type ControlPanelAttrs = {
   config: DiagramConfig;
   debugHighlight: boolean;
@@ -131,6 +135,48 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
               m("option", { value: "dark" }, "Dark"),
             ],
           ),
+        ]),
+        m("div.font-size-control", [
+          m("span.font-size-label", "Font size"),
+          m("div.font-size-buttons", [
+            m(
+              "button",
+              {
+                type: "button",
+                "aria-label": "Decrease diagram font size",
+                disabled: config.fontScale <= FONT_SCALE_MIN,
+                onclick: () => {
+                  onConfigChange({
+                    ...config,
+                    fontScale: Math.max(
+                      FONT_SCALE_MIN,
+                      Math.round((config.fontScale - FONT_SCALE_STEP) * 100) / 100,
+                    ),
+                  });
+                },
+              },
+              "−",
+            ),
+            m("span.font-size-mark", { "aria-hidden": "true" }, "Aa"),
+            m(
+              "button",
+              {
+                type: "button",
+                "aria-label": "Increase diagram font size",
+                disabled: config.fontScale >= FONT_SCALE_MAX,
+                onclick: () => {
+                  onConfigChange({
+                    ...config,
+                    fontScale: Math.min(
+                      FONT_SCALE_MAX,
+                      Math.round((config.fontScale + FONT_SCALE_STEP) * 100) / 100,
+                    ),
+                  });
+                },
+              },
+              "+",
+            ),
+          ]),
         ]),
         m("label", [
           "Component style",

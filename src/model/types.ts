@@ -26,6 +26,7 @@ export type DiagramConfig = {
   showReversingValve: boolean;
   indoorSide: IndoorSide;
   theme: ThemeMode;
+  fontScale: number;
   overlays: OverlayToggles;
   playback: PlaybackState;
 };
@@ -39,6 +40,7 @@ export function createDefaultConfig(): DiagramConfig {
     showReversingValve: false,
     indoorSide: "right",
     theme: "light",
+    fontScale: 1,
     overlays: {
       labels: true,
       pressure: false,

@@ -125,21 +125,21 @@ function reversingValveLayout(heating: boolean): CircuitLayout {
   return {
     loop: "M690,370 V250 H840 V405 H145 V220 H720 V370 H690 Z",
     high: heating
-      ? "M690,370 H720 V220 H145 V405 H400"
-      : "M690,370 V250 H840 V405 H400",
+      ? "M690,370 H720 V220 H145 V405 H705"
+      : "M690,370 V250 H840 V405 H705",
     low: heating
-      ? "M400,405 H840 V250 H690"
-      : "M400,405 H145 V220 H720 V370 H690",
+      ? "M705,405 H840 V250 H690"
+      : "M705,405 H145 V220 H720 V370 H690",
     indoorCoil: { x: 145, y: 280 },
     outdoorCoil: { x: 840, y: 328 },
     compressor: { x: 705, y: 370 },
-    expansion: { x: 400, y: 405 },
+    expansion: { x: 705, y: 405 },
     reversingValve: { x: 700, y: 250 },
     arrows: [
       { x: 690, y: 310, rotation: -90 },
       { x: 840, y: 328, rotation: 90 },
-      { x: 560, y: 405, rotation: 180 },
-      { x: 145, y: 312, rotation: -90 },
+      { x: 400, y: 405, rotation: 180 },
+      { x: 145, y: 328, rotation: -90 },
       { x: 400, y: 220, rotation: 0 },
       { x: 720, y: 310, rotation: 90 },
     ],
@@ -159,20 +159,20 @@ function simpleBoxLayout(heating: boolean): CircuitLayout {
   return {
     loop: "M660,250 H840 V405 H145 V250 H660 Z",
     high: heating
-      ? "M660,250 H145 V405 H313"
-      : "M660,250 H840 V405 H313",
+      ? "M660,250 H145 V405 H660"
+      : "M660,250 H840 V405 H660",
     low: heating
-      ? "M313,405 H840 V250 H660"
-      : "M313,405 H145 V250 H660",
+      ? "M660,405 H840 V250 H660"
+      : "M660,405 H145 V250 H660",
     indoorCoil: { x: 145, y: 328 },
     outdoorCoil: { x: 840, y: 328 },
     compressor: { x: 660, y: 250 },
-    expansion: { x: 313, y: 405 },
+    expansion: { x: 660, y: 405 },
     reversingValve: { x: 700, y: 250 },
     arrows: [
       { x: 400, y: 250, rotation: 0 },
       { x: 840, y: 328, rotation: 90 },
-      { x: 560, y: 405, rotation: 180 },
+      { x: 400, y: 405, rotation: 180 },
       { x: 145, y: 328, rotation: -90 },
     ],
     stations: assignStations(
@@ -191,20 +191,20 @@ function iconLayout(heating: boolean): CircuitLayout {
   return {
     loop: "M700,390 V250 H840 V405 H145 V220 H700 V390 Z",
     high: heating
-      ? "M700,390 V220 H145 V405 H400"
-      : "M700,390 V250 H840 V405 H400",
+      ? "M700,390 V220 H145 V405 H705"
+      : "M700,390 V250 H840 V405 H705",
     low: heating
-      ? "M400,405 H840 V250 H700"
-      : "M400,405 H145 V220 H700 V390",
+      ? "M705,405 H840 V250 H700"
+      : "M705,405 H145 V220 H700 V390",
     indoorCoil: { x: 145, y: 280 },
     outdoorCoil: { x: 840, y: 328 },
     compressor: { x: 705, y: 370 },
-    expansion: { x: 400, y: 405 },
+    expansion: { x: 705, y: 405 },
     reversingValve: { x: 700, y: 250 },
     arrows: [
       { x: 700, y: 320, rotation: -90 },
       { x: 840, y: 328, rotation: 90 },
-      { x: 560, y: 405, rotation: 180 },
+      { x: 400, y: 405, rotation: 180 },
       { x: 145, y: 312, rotation: -90 },
       { x: 400, y: 220, rotation: 0 },
     ],
@@ -274,14 +274,21 @@ function label(
   );
 }
 
-function overlayBadge(text: string, x: number, y: number, key: string): m.Vnode {
-  const width = Math.max(72, text.length * 6.6 + 16);
+function overlayBadge(
+  text: string,
+  x: number,
+  y: number,
+  key: string,
+  fontScale: number,
+): m.Vnode {
+  const width = Math.max(72, text.length * 6.6 + 16) * fontScale;
+  const height = 22 * fontScale;
   return m("g.overlay-badge", { key, transform: `translate(${x} ${y})` }, [
     m("rect.overlay-badge-bg", {
       x: -width / 2,
-      y: -11,
+      y: -height / 2,
       width,
-      height: 22,
+      height,
       rx: 4,
     }),
     m(
@@ -319,7 +326,7 @@ export function minisplitScene(config: DiagramConfig): m.Children {
       return [];
     }
     const point = circuit.stations[station];
-    return [overlayBadge(text, point.x, point.y, `badge-${station}`)];
+    return [overlayBadge(text, point.x, point.y, `badge-${station}`, config.fontScale)];
   });
 
   const indoorZoneX = flip ? 480 : 0;
@@ -444,8 +451,8 @@ export function minisplitScene(config: DiagramConfig): m.Children {
           "g.expansion-valve",
           {
             transform: heating
-              ? "translate(400 405) scale(-1 1)"
-              : "translate(400 405)",
+              ? "translate(705 405) scale(-1 1)"
+              : "translate(705 405)",
           },
           expansionValveIcon(),
         ),
@@ -519,7 +526,12 @@ export function minisplitScene(config: DiagramConfig): m.Children {
         placeAnchor("end"),
         "reversing-valve-label",
       ),
-      label("Expansion valve", placeX(400), 438, placeAnchor("middle")),
+      label(
+        "Expansion valve",
+        circuit.expansion.x,
+        circuit.expansion.y + 40,
+        "middle",
+      ),
       label("Vapor line", placeX(320), 206, placeAnchor("middle")),
       label("Liquid line", placeX(250), 392, placeAnchor("middle")),
       label(
