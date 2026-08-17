@@ -25,6 +25,8 @@
   --wall: #9aa3ad;
   --zone-warm: #f3e4d4;
   --zone-cool: #d7e6ee;
+  --weather-snow: #ffffff;
+  --weather-sun: #e2b15a;
   --house-fill: rgba(255, 255, 255, 0.35);
   --house-stroke: #5c6670;
   --particle-fill: #ffffff;
@@ -61,6 +63,8 @@
   --wall: #4a5561;
   --zone-warm: #2a221c;
   --zone-cool: #172228;
+  --weather-snow: #f3f8fb;
+  --weather-sun: #d4a35a;
   --house-fill: rgba(255, 255, 255, 0.04);
   --house-stroke: #c5d0da;
   --particle-fill: #f4f1ea;
@@ -137,6 +141,43 @@ body {
 
 .diagram-scene[data-mode="cooling"] .zone-outdoor {
   fill: var(--zone-warm);
+}
+
+.outdoor-weather {
+  pointer-events: none;
+}
+
+.weather-snow {
+  fill: none;
+  stroke: var(--weather-snow);
+  stroke-width: 2.15;
+  stroke-linecap: round;
+  opacity: 1;
+  filter: drop-shadow(0 0 0.9px rgba(70, 102, 122, 0.55));
+}
+
+.weather-sun {
+  opacity: 0.8;
+}
+
+.weather-sun-disc {
+  fill: var(--weather-sun);
+  stroke: none;
+}
+
+.weather-sun-rays {
+  fill: none;
+  stroke: var(--weather-sun);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.diagram-scene:not([data-mode="heating"]) .weather-snow {
+  visibility: hidden;
+}
+
+.diagram-scene:not([data-mode="cooling"]) .weather-sun {
+  visibility: hidden;
 }
 
 .scene-caption,

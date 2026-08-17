@@ -294,6 +294,63 @@ function houseContext(flip: boolean): m.Children {
   );
 }
 
+function snowflakeMark(x: number, y: number, size: number): m.Vnode {
+  const diag = size * 0.72;
+  return m("g.weather-flake", { transform: `translate(${x} ${y})` }, [
+    m("line", { x1: 0, y1: -size, x2: 0, y2: size }),
+    m("line", { x1: -size, y1: 0, x2: size, y2: 0 }),
+    m("line", { x1: -diag, y1: -diag, x2: diag, y2: diag }),
+    m("line", { x1: diag, y1: -diag, x2: -diag, y2: diag }),
+  ]);
+}
+
+function outdoorWeather(flip: boolean): m.Children {
+  // Canonical outdoor-right (indoor-left); mirrored with the outdoor zone.
+  const sunX = 888;
+  const sunY = 86;
+  const sunR = 16;
+  const rayInner = sunR + 5;
+  const rayOuter = sunR + 13;
+  const rays = [0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
+    const rad = (deg * Math.PI) / 180;
+    return m("line", {
+      x1: sunX + Math.cos(rad) * rayInner,
+      y1: sunY + Math.sin(rad) * rayInner,
+      x2: sunX + Math.cos(rad) * rayOuter,
+      y2: sunY + Math.sin(rad) * rayOuter,
+    });
+  });
+
+  return m(
+    "g.outdoor-weather",
+    {
+      transform: flip ? `translate(${VIEWBOX_WIDTH} 0) scale(-1 1)` : undefined,
+    },
+    [
+      m("g.weather-sun", [
+        m("circle.weather-sun-disc", { cx: sunX, cy: sunY, r: sunR }),
+        m("g.weather-sun-rays", rays),
+      ]),
+      m("g.weather-snow", [
+        snowflakeMark(530, 90, 11),
+        snowflakeMark(572, 152, 9),
+        snowflakeMark(618, 78, 13),
+        snowflakeMark(662, 176, 10),
+        snowflakeMark(708, 108, 12),
+        snowflakeMark(754, 196, 9),
+        snowflakeMark(798, 74, 11),
+        snowflakeMark(838, 144, 10),
+        snowflakeMark(878, 96, 13),
+        snowflakeMark(918, 178, 9),
+        snowflakeMark(640, 122, 8),
+        snowflakeMark(782, 124, 9),
+        snowflakeMark(548, 210, 8),
+        snowflakeMark(894, 218, 8),
+      ]),
+    ],
+  );
+}
+
 function overlayBadge(
   text: string,
   x: number,
@@ -366,6 +423,7 @@ export function minisplitScene(config: DiagramConfig): m.Children {
         width: 480,
         height: 540,
       }),
+      outdoorWeather(flip),
       houseContext(flip),
       m("line.wall", { x1: 480, y1: 72, x2: 480, y2: 500 }),
       m(
