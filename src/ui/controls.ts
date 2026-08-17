@@ -24,6 +24,91 @@ export type ControlPanelAttrs = {
   onDebugHighlightChange: (value: boolean) => void;
 };
 
+function fireIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    [
+      m("path", {
+        fill: "currentColor",
+        d: "M12.8 2c3.4 5.1 7.2 7.6 7.2 12.6 0 4.4-3.6 7.6-8 7.6s-8-3.2-8-7.6c0-3.3 1.8-6 4.2-8.6-1.8 3.8-1.4 6.4.4 8.2C8.4 9.8 10.2 6.8 12.8 2z",
+      }),
+      m("path", {
+        fill: "var(--control-surface)",
+        d: "M12.2 11.6c1.5 1.8 2.4 3 2.4 4.8 0 2-1.5 3.4-3.3 3.4s-3.3-1.4-3.3-3.4c0-1.6.8-2.7 2.1-4.1.4 1.4 1.2 2.2 2.1-.7z",
+      }),
+    ],
+  );
+}
+
+function snowflakeArm(): m.Children {
+  return [
+    m("line", { x1: 12, y1: 2.4, x2: 12, y2: 21.6 }),
+    m("polyline", { points: "8.6,5.6 12,2.4 15.4,5.6" }),
+    m("polyline", { points: "8.6,18.4 12,21.6 15.4,18.4" }),
+    m("polyline", { points: "9.4,9.2 12,7.4 14.6,9.2" }),
+    m("polyline", { points: "9.4,14.8 12,16.6 14.6,14.8" }),
+  ];
+}
+
+function snowflakeIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 1.7,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    [0, 60, 120].map((deg) =>
+      m("g", { transform: `rotate(${deg} 12 12)` }, snowflakeArm()),
+    ),
+  );
+}
+
+type CycleSwitchOption<T extends string> = {
+  value: T;
+  label: string;
+  icon: () => m.Children;
+};
+
+function squareCycleSwitch<T extends string>(opts: {
+  name: string;
+  value: T;
+  options: CycleSwitchOption<T>[];
+  onChange: (value: T) => void;
+}): m.Children {
+  const index = Math.max(
+    0,
+    opts.options.findIndex((option) => option.value === opts.value),
+  );
+  const current = opts.options[index];
+  const next = opts.options[(index + 1) % opts.options.length];
+
+  return m(
+    "button.square-switch",
+    {
+      type: "button",
+      "data-value": current.value,
+      title: `${opts.name}: ${current.label}`,
+      "aria-label": `${opts.name}: ${current.label}. Click to switch to ${next.label}.`,
+      onclick: () => opts.onChange(next.value),
+    },
+    [
+      m("span.square-switch-icon", current.icon()),
+      m("span.square-switch-label", current.label),
+    ],
+  );
+}
+
 function overlayToggle(
   overlays: OverlayToggles,
   key: keyof OverlayToggles,
@@ -105,22 +190,16 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
             ],
           ),
         ]),
-        m("label", [
-          "Cycle",
-          m(
-            "select",
-            {
-              value: config.mode,
-              onchange: (event: Event) => {
-                const mode = (event.target as HTMLSelectElement).value as CycleMode;
-                onConfigChange({ ...config, mode });
-              },
-            },
-            [
-              m("option", { value: "cooling" }, "Cooling"),
-              m("option", { value: "heating" }, "Heating"),
+        m("div.square-switch-row", [
+          squareCycleSwitch<CycleMode>({
+            name: "Cycle",
+            value: config.mode,
+            options: [
+              { value: "heating", label: "Heating", icon: fireIcon },
+              { value: "cooling", label: "Cooling", icon: snowflakeIcon },
             ],
-          ),
+            onChange: (mode) => onConfigChange({ ...config, mode }),
+          }),
         ]),
         m("label", [
           "Theme",

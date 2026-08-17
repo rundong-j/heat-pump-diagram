@@ -417,6 +417,70 @@ body {
   font-size: 13px;
 }
 
+.square-switch-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.square-switch {
+  aspect-ratio: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 8px 4px 7px;
+  border: 1px solid var(--line);
+  background: var(--control-surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  user-select: none;
+}
+
+.square-switch:hover {
+  border-color: var(--accent);
+}
+
+.square-switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.square-switch-icon {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  width: 100%;
+}
+
+.square-switch-icon svg {
+  width: 58%;
+  height: 58%;
+  display: block;
+}
+
+.square-switch-label {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.square-switch[data-value="heating"] .square-switch-icon {
+  color: var(--pipe-hot);
+}
+
+.square-switch[data-value="cooling"] .square-switch-icon {
+  color: var(--pipe-cold);
+}
+
 .font-size-control {
   display: flex;
   flex-direction: column;
