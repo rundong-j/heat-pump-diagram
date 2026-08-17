@@ -62,9 +62,11 @@ export class SceneAnimation {
     const simpleBox = config.componentStyle === "simpleBox";
     const labels = this.svg.querySelector("[data-role='labels']");
     const arrows = this.svg.querySelector("[data-role='static-arrows']");
+    const heatTransfer = this.svg.querySelector("[data-role='heat-transfer']");
 
     labels?.classList.toggle("is-hidden", !config.overlays.labels || simpleBox);
     arrows?.classList.toggle("is-hidden", !(config.overlays.direction || reduced));
+    heatTransfer?.classList.toggle("is-hidden", !config.overlays.heatTransfer);
     this.svg.classList.toggle("labels-off", !config.overlays.labels);
     this.svg.classList.toggle("hide-reversing-valve", !config.showReversingValve);
     this.svg.dataset.componentStyle = config.componentStyle;

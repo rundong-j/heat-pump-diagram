@@ -350,6 +350,7 @@ body {
 }
 
 .layer-labels.is-hidden,
+.layer-heat-transfer.is-hidden,
 .static-arrows.is-hidden,
 .hide-reversing-valve .reversing-valve,
 .hide-reversing-valve .reversing-valve-label,
@@ -460,6 +461,15 @@ body {
   flex-direction: row;
   align-items: center;
   gap: 8px;
+}
+
+.control-panel label.checkbox:has(input:disabled) {
+  color: #9aa3ad;
+  cursor: not-allowed;
+}
+
+.control-panel input[type="checkbox"]:disabled {
+  cursor: not-allowed;
 }
 
 .control-panel select,

@@ -555,19 +555,26 @@ export function minisplitScene(config: DiagramConfig): m.Children {
       ),
       label("Vapor line", placeX(320), 206, placeAnchor("middle")),
       label("Liquid line", placeX(250), 392, placeAnchor("middle")),
-      label(
-        heatFlowLabel(indoorRole),
-        placeX(195),
-        455,
-        placeAnchor("middle"),
-      ),
-      label(
-        heatFlowLabel(outdoorRole),
-        placeX(755),
-        475,
-        placeAnchor("middle"),
-      ),
     ]),
+
+    m(
+      "g.layer-heat-transfer",
+      { key: "heat-transfer", "data-role": "heat-transfer" },
+      [
+        label(
+          heatFlowLabel(indoorRole),
+          placeX(195),
+          455,
+          placeAnchor("middle"),
+        ),
+        label(
+          heatFlowLabel(outdoorRole),
+          placeX(755),
+          475,
+          placeAnchor("middle"),
+        ),
+      ],
+    ),
 
     m(
       "g.layer-overlays",

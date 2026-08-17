@@ -29,11 +29,13 @@ function overlayToggle(
   key: keyof OverlayToggles,
   label: string,
   onChange: (overlays: OverlayToggles) => void,
+  disabled = false,
 ): m.Children {
   return m("label.checkbox", [
     m("input", {
       type: "checkbox",
       checked: overlays[key],
+      disabled,
       onchange: (event: Event) => {
         const checked = (event.target as HTMLInputElement).checked;
         onChange({ ...overlays, [key]: checked });
@@ -292,6 +294,13 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
         ),
         overlayToggle(config.overlays, "direction", "Direction", (overlays) =>
           onConfigChange({ ...config, overlays }),
+        ),
+        overlayToggle(
+          config.overlays,
+          "heatTransfer",
+          "Heat transfer",
+          (overlays) => onConfigChange({ ...config, overlays }),
+          true,
         ),
       ]),
     ]);

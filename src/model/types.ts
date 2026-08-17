@@ -12,6 +12,7 @@ export type OverlayToggles = {
   temperature: boolean;
   phase: boolean;
   direction: boolean;
+  heatTransfer: boolean;
 };
 
 export type PlaybackState = {
@@ -50,6 +51,7 @@ export function createDefaultConfig(): DiagramConfig {
       temperature: false,
       phase: false,
       direction: true,
+      heatTransfer: false,
     },
     playback: {
       playing: true,
