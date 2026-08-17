@@ -43,7 +43,7 @@ export function createDefaultConfig(): DiagramConfig {
     showReversingValve: false,
     indoorSide: "right",
     theme: "light",
-    fontScale: 1,
+    fontScale: 1.3,
     coilLabels: "role",
     overlays: {
       labels: true,

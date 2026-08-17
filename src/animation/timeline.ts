@@ -188,7 +188,7 @@ function buildMachineTimeline(svg: SVGSVGElement): gsap.core.Timeline {
         ease: "sine.inOut",
         yoyo: true,
         repeat: -1,
-        transformOrigin: "0px 0px",
+        transformOrigin: "50% 50%",
       },
       0,
     );
