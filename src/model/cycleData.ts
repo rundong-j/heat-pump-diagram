@@ -1,6 +1,7 @@
-import type { CycleMode, OverlayToggles } from "./types";
+import type { CoilLabelStyle, CycleMode, OverlayToggles } from "./types";
 
 export type CoilRole = "evaporator" | "condenser";
+export type CoilSide = "indoor" | "outdoor";
 
 export type StationId = "discharge" | "liquid" | "twoPhase" | "suction";
 
@@ -32,7 +33,14 @@ export function indoorCoilRole(mode: CycleMode): CoilRole {
   return mode === "heating" ? "condenser" : "evaporator";
 }
 
-export function coilLabel(role: CoilRole): string {
+export function coilLabel(
+  side: CoilSide,
+  role: CoilRole,
+  style: CoilLabelStyle,
+): string {
+  if (style === "location") {
+    return side === "indoor" ? "Indoor coil" : "Outdoor coil";
+  }
   return role === "evaporator" ? "Evaporator" : "Condenser";
 }
 

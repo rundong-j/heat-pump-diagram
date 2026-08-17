@@ -1,6 +1,7 @@
 import m from "mithril";
 import type {
   BackgroundStyle,
+  CoilLabelStyle,
   ComponentStyle,
   CycleMode,
   DiagramConfig,
@@ -221,6 +222,24 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
             [
               m("option", { value: "none" }, "None"),
               m("option", { value: "house" }, "House context"),
+            ],
+          ),
+        ]),
+        m("label", [
+          "Coil labels",
+          m(
+            "select",
+            {
+              value: config.coilLabels,
+              onchange: (event: Event) => {
+                const coilLabels = (event.target as HTMLSelectElement)
+                  .value as CoilLabelStyle;
+                onConfigChange({ ...config, coilLabels });
+              },
+            },
+            [
+              m("option", { value: "role" }, "Evaporator / Condenser"),
+              m("option", { value: "location" }, "Indoor / Outdoor coil"),
             ],
           ),
         ]),

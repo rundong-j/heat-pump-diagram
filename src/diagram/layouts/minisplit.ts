@@ -484,17 +484,17 @@ export function minisplitScene(config: DiagramConfig): m.Children {
           id: "indoorCoil",
           x: circuit.indoorCoil.x,
           y: circuit.indoorCoil.y,
-          width: 132,
+          width: 140,
           height: 52,
-          label: coilLabel(indoorRole),
+          label: coilLabel("indoor", indoorRole, config.coilLabels),
         }),
         componentBox({
           id: "outdoorCoil",
           x: circuit.outdoorCoil.x,
           y: circuit.outdoorCoil.y,
-          width: 132,
+          width: 140,
           height: 52,
-          label: coilLabel(outdoorRole),
+          label: coilLabel("outdoor", outdoorRole, config.coilLabels),
         }),
         componentBox({
           id: "compressor",
@@ -527,14 +527,14 @@ export function minisplitScene(config: DiagramConfig): m.Children {
     m("g.layer-labels", { key: "labels", "data-role": "labels" }, [
       label("Indoor unit", placeX(195), 172, placeAnchor("middle")),
       label(
-        coilLabel(indoorRole),
+        coilLabel("indoor", indoorRole, config.coilLabels),
         placeX(160),
         352,
         placeAnchor("middle"),
       ),
       label("Outdoor unit", placeX(755), 108, placeAnchor("middle")),
       label(
-        coilLabel(outdoorRole),
+        coilLabel("outdoor", outdoorRole, config.coilLabels),
         placeX(855),
         328,
         placeAnchor("middle"),
