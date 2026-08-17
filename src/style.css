@@ -241,28 +241,48 @@ body {
 
 .pipe-hot {
   stroke: var(--pipe-hot);
-  stroke-width: 5;
 }
 
 .pipe-warm {
   stroke: var(--pipe-warm);
-  stroke-width: 5;
 }
 
 .pipe-cool {
   stroke: var(--pipe-cool);
-  stroke-width: 7;
 }
 
 .pipe-cold {
   stroke: var(--pipe-cold);
-  stroke-width: 7;
+}
+
+.diagram-scene[data-line-color="constant"] .pipe {
+  stroke: var(--house-stroke);
+}
+
+.diagram-scene[data-line-width="constant"] .pipe {
+  stroke-width: 6;
+}
+
+.diagram-scene[data-line-width="pressureBased"] .pipe-hot,
+.diagram-scene[data-line-width="pressureBased"] .pipe-warm {
+  stroke-width: 8;
+}
+
+.diagram-scene[data-line-width="pressureBased"] .pipe-cool,
+.diagram-scene[data-line-width="pressureBased"] .pipe-cold {
+  stroke-width: 3.5;
 }
 
 .diagram-scene[data-line-style="dashed"] .pipe {
-  /* Dash + gap must sum to DASH_CYCLE in timeline.ts */
-  stroke-dasharray: 16 12;
   stroke-linecap: butt;
+  /* Regular dashes. Period 28 = DASH_CYCLE in timeline.ts */
+  stroke-dasharray: 16 12;
+}
+
+.diagram-scene[data-line-style="dashed"][data-line-width="pressureBased"] .pipe-hot,
+.diagram-scene[data-line-style="dashed"][data-line-width="pressureBased"] .pipe-warm {
+  /* Same pattern compressed along the pipe. */
+  stroke-dasharray: 8 6;
 }
 
 .diagram-scene[data-line-style="dashed"] .layer-particles {

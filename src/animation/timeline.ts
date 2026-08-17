@@ -71,6 +71,8 @@ export class SceneAnimation {
     this.svg.dataset.mode = config.mode;
     this.svg.dataset.background = config.background;
     this.svg.dataset.lineStyle = config.lineStyle;
+    this.svg.dataset.lineColor = config.lineColor;
+    this.svg.dataset.lineWidth = config.lineWidth;
     if (!reduced) {
       this.applyParticleVisibility(config.lineStyle);
     }

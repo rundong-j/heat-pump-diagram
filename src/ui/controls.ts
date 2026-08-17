@@ -6,7 +6,9 @@ import type {
   CycleMode,
   DiagramConfig,
   IndoorSide,
+  LineColorStyle,
   LineStyle,
+  LineWidthStyle,
   OverlayToggles,
   SystemType,
   ThemeMode,
@@ -201,6 +203,41 @@ function dashedLineIcon(): m.Children {
     m("path", { d: LINE_STYLE_PATH, "stroke-dasharray": "3.2 2.4" }),
     { strokeWidth: 2 },
   );
+}
+
+function temperatureColorIcon(): m.Children {
+  return hudIcon([
+    m("path", { d: "M3.5 16.5 H8.5", stroke: "#d73027", "stroke-width": 2.2 }),
+    m("path", { d: "M8.5 16.5 V7.5 H12", stroke: "#fdae61", "stroke-width": 2.2 }),
+    m("path", { d: "M12 7.5 H15.5 V16.5", stroke: "#74add1", "stroke-width": 2.2 }),
+    m("path", { d: "M15.5 16.5 H20.5", stroke: "#313695", "stroke-width": 2.2 }),
+  ]);
+}
+
+function constantColorIcon(): m.Children {
+  return hudIcon(m("path", { d: LINE_STYLE_PATH }), { strokeWidth: 2 });
+}
+
+function constantWidthIcon(): m.Children {
+  return hudIcon(
+    m("path", { d: LINE_STYLE_PATH, "stroke-dasharray": "3.2 2.4" }),
+    { strokeWidth: 2 },
+  );
+}
+
+function pressureWidthIcon(): m.Children {
+  return hudIcon([
+    m("path", {
+      d: "M3.5 16.5 H8.5 V7.5",
+      "stroke-width": 3.4,
+      "stroke-dasharray": "2 1.4",
+    }),
+    m("path", {
+      d: "M8.5 7.5 H15.5 V16.5 H20.5",
+      "stroke-width": 1.2,
+      "stroke-dasharray": "3.2 2.4",
+    }),
+  ]);
 }
 
 type SquareSwitchOption<T extends string> = {
@@ -411,6 +448,32 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
               { value: "dashed", label: "Dashed", icon: dashedLineIcon },
             ],
             onChange: (lineStyle) => onConfigChange({ ...config, lineStyle }),
+          }),
+          squareCycleSwitch<LineColorStyle>({
+            name: "Line color",
+            value: config.lineColor,
+            options: [
+              {
+                value: "temperatureBased",
+                label: "Temperature-based",
+                icon: temperatureColorIcon,
+              },
+              { value: "constant", label: "Constant", icon: constantColorIcon },
+            ],
+            onChange: (lineColor) => onConfigChange({ ...config, lineColor }),
+          }),
+          squareCycleSwitch<LineWidthStyle>({
+            name: "Line width & spacing",
+            value: config.lineWidth,
+            options: [
+              { value: "constant", label: "Constant", icon: constantWidthIcon },
+              {
+                value: "pressureBased",
+                label: "Pressure-based",
+                icon: pressureWidthIcon,
+              },
+            ],
+            onChange: (lineWidth) => onConfigChange({ ...config, lineWidth }),
           }),
         ]),
       ]),

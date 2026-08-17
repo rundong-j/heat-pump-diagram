@@ -20,6 +20,7 @@ If the UI looks stale after edits, kill stray Vite listeners on 5173–5180 and 
 | 2+ | Light/dark theme; zone fills; diagram font scale; coil label style | Done. Default **light**. Font size is a square switch (Small / Normal / Large / **XL default 1.3**). Coil labels: Evap / Cond vs Outdoor / Indoor. |
 | 2++ | Square-switch HUD; simplified playback; outdoor weather | Done. 3-column tiles. Playback is play-pause + speed slider + **screenshot** (4K JPEG save dialog). |
 | 2+++ | Four-color refrigerant lines | Done. ColorBrewer RdYlBu: hot / warm / cold / cool. Hot and cold stop at condenser / evaporator centers; warm and cool continue from there. |
+| 2++++ | Line appearance HUD | Done. **Line style** Solid \| **Dashed (default)**. **Line color** **Temperature-based (default)** \| Constant (house-outline stroke). **Line width & spacing** **Constant (default)** \| Pressure-based. |
 | 3 | Ducted-split layout; none vs house background | **House & weather done** (default). Ducted not started — Type stays disabled. Background tile: `none` (plain white) \| `house` (zones + weather + outline). |
 | 4 | Icon / sketch / cross-section art swap | Partial. `simpleBox` default (tile **disabled**). `icon` still renders if enabled in config. `sketch` and `crossSection` disabled. |
 | 5 | URL-serialized config, presenter chrome, export | **JPEG screenshot done** (`src/ui/screenshot.ts`, 3840×2160). URL config and SVG/PNG fallback not started. |
@@ -35,6 +36,7 @@ Defined in `src/model/types.ts` `createDefaultConfig()`:
 - Coil labels: **role** (Evaporator / Condenser)
 - Font scale **1.3** (XL)
 - Labels and direction on; P/T/phase and **heat transfer** off
+- **Line style dashed**; **line color temperature-based**; **line width & spacing constant**
 - Playback playing at **1×** (`LOOP_SECONDS = 28` in `src/animation/timeline.ts`)
 
 ## Architecture
@@ -45,10 +47,13 @@ Host-agnostic core. Do not put Office.js in the diagram engine.
 src/
   model/types.ts                DiagramConfig (single source of truth)
   model/cycleData.ts            Illustrative P/T/phase + coil role/label helpers
+  diagram/viewport.ts           Shared 960×540 viewBox constants
+  diagram/layer.ts              Always-mounted g.layer-* helper (key + data-role)
   diagram/scene.ts              Mithril SVG root; keyed so it does not remount
   diagram/layouts/minisplit.ts  Paths, boxes, arrows, zones, house, weather, mirrors
   diagram/icons.ts              Geometric icons + simple-box helper
-  animation/timeline.ts         GSAP flow (MotionPath) + machine tweens
+  animation/timeline.ts         GSAP flow (MotionPath) + dash offset + machine tweens
+  ui/hudIcon.ts                 Shared 24×24 HUD SVG wrapper
   ui/controls.ts                Config HUD; square switches; debug at bottom
   ui/playback.ts                Play/pause + speed + screenshot button
   ui/screenshot.ts              Clone SVG → 4K JPEG → showSaveFilePicker
@@ -65,16 +70,21 @@ src/
 1. **Type** (disabled) · **Cycle** (fire / snowflake) · **Reversing valve** (disabled, Off)
 2. **Component style** (disabled, Simple box) · **Background** (None \| House & weather) · **Coil labels** (Evap / Cond \| Outdoor / Indoor)
 3. **Indoor** (Left side \| Right side) · **Theme** (light bulb / moon) · **Font size** (Aa, default XL)
+4. **Line style** (Solid \| Dashed) · **Line color** (Temperature-based \| Constant) · **Line width & spacing** (Constant \| Pressure-based)
 
-**Layers** are a naming convention, not a compositor. `minisplitScene()` returns keyed `<g class="layer-*">` groups that **stay mounted**. Visibility is CSS `data-*` plus a few `classList` toggles in `SceneAnimation`. Do not conditionally create/destroy equipment groups.
+**Layers** use `layer(name, children)` in `diagram/layer.ts`. That helper always returns keyed `<g class="layer-*">` with matching `data-role`. Groups **stay mounted**. Visibility is CSS `data-*` plus a few `classList` toggles in `SceneAnimation`. Do not conditionally create/destroy equipment groups.
 
 Layer order **back → front**: zone fills → outdoor weather → house outline → refrigerant **lines** (hot/warm/cold/cool) → invisible **loop** (particles) → **particles** → **arrows** → **equipment** (icon set AND simple-box set both in DOM) → labels → heat-transfer labels → P/T/phase badges.
 
-`circuitLayout()` owns `loop` plus four colored `d` strings and box centers. **Hot** ends at the condenser Y; **warm** continues to the expansion valve; **cold** ends at the evaporator Y; **cool** continues to the compressor. Heating swaps which coil is condenser vs evaporator. The hidden `loop` path still traces the full rectangle for GSAP. Rebuild flow only when `topologyKey` changes (`showReversingValve`, `componentStyle`, `indoorSide`, `mode`).
+`circuitLayout()` owns `loop` plus four colored `d` strings and box centers. **Hot** ends at the condenser Y; **warm** continues to the expansion valve; **cold** ends at the evaporator Y; **cool** continues to the compressor. Heating swaps which coil is condenser vs evaporator. The hidden `loop` path still traces the full rectangle for GSAP. Rebuild flow (particles **and** dashes) only when `topologyKey` changes (`showReversingValve`, `componentStyle`, `indoorSide`, `mode`).
 
-Pipe colors (light): `--pipe-hot #d73027`, `--pipe-warm #fdae61`, `--pipe-cool #74add1`, `--pipe-cold #313695`. Dark theme uses the same hues, lightened. High-side stroke 5px; low-side 7px.
+**Line style:** `data-line-style`. **Solid** = static pipes + GSAP particles on the hidden loop. **Dashed** = hide particles (`autoAlpha: 0`); march `stroke-dashoffset` on `.pipe` via SVG attr (user units, not CSS px). Dash linear speed is **half** particle speed (`DASH_SPEED_VS_PARTICLES = 0.5`), from loop length / `LOOP_SECONDS`. Play/pause and speed drive both. Reduced motion: no particles, static dashes if dashed. Keep particle nodes mounted.
 
-Heating reverses arrow rotations (normalize `% 360` before `flipRotation`). `mirrorLayout()` flips X for `indoorSide: "right"`. Icon equipment flips with `translate(960 0) scale(-1 1)`.
+**Line color:** `data-line-color`. **Temperature-based** uses RdYlBu tokens (light: `--pipe-hot #d73027`, `--pipe-warm #fdae61`, `--pipe-cool #74add1`, `--pipe-cold #313695`; dark hues lightened). **Constant** paints every `.pipe` with `--house-stroke` (`#5c6670` light / `#c5d0da` dark).
+
+**Line width & spacing:** `data-line-width`. **Constant** = 6px stroke and uniform dasharray `16 12` when dashed. **Pressure-based** = high-side (hot/warm) 8px, low-side (cool/cold) 3.5px; when dashed, high-side dashes compress to `8 6` (same pattern, half period). Dash animation period `DASH_CYCLE = 28` is an integer multiple of both patterns. Do not set dashed `stroke-width` in CSS — width comes only from this tile.
+
+Heating reverses arrow rotations (normalize `% 360` before `flipRotation`). `mirrorLayout()` flips X for `indoorSide: "right"`. Icon equipment flips with `translate(960 0) scale(-1 1)` using `VIEWPORT_WIDTH`.
 
 **Simple-box loop (RV off):** compressor and expansion share outdoor x before mirror (`660`); expansion under compressor. Coil centers `840` / `145` at y=`328`. Paired arrows at x=`370`.
 
@@ -82,15 +92,17 @@ Heating reverses arrow rotations (normalize `% 360` before `flipRotation`). `mir
 
 Compressor pulse: `transformOrigin: "50% 50%"`. Fan blades still rotate around `"0px 0px"`. Particles stay white. Heat-transfer HUD option stays disabled.
 
+Viewport: `VIEWPORT_WIDTH` / `VIEWPORT_HEIGHT` / `VIEWBOX` in `diagram/viewport.ts` (960×540). Scene, layout mirroring/zones, and 4K screenshot math all import it. HUD glyphs go through `hudIcon()` in `ui/hudIcon.ts`.
+
 Screenshot: clones `.diagram-scene`, inlines CSS variables + stylesheets, rasterizes 3840×2160 JPEG, `showSaveFilePicker` (download fallback). Cancel is a no-op.
 
 ## Hard rules (easy to break)
 
-1. **Mithril vs GSAP:** SVG scene created once (`key: "diagram-scene"`). Destroying SVG nodes kills tweens. Prefer CSS / `data-*` / in-place attribute patches. Icon and simple-box equipment must **both** stay in the DOM.
+1. **Mithril vs GSAP:** SVG scene created once (`key: "diagram-scene"`). Destroying SVG nodes kills tweens. Prefer CSS / `data-*` / in-place attribute patches. Icon and simple-box equipment must **both** stay in the DOM. Particles stay in the DOM when dashed.
 2. **Fragment keys:** children of one parent must **all** have keys or **none** do.
 3. **Do not put labels inside a group that inherits `stroke`.** Box labels: `fill: var(--label); stroke: none`.
-4. **Simple box vs overlay labels:** `[data-component-style="simpleBox"] .layer-labels { visibility: hidden }`. Prefer CSS on `data-component-style` / `.labels-off` / `.hide-reversing-valve` / `data-background` / mode-based weather.
-5. **`prefers-reduced-motion`:** no particles; static arrows stay visible.
+4. **Simple box vs overlay labels:** `[data-component-style="simpleBox"] .layer-labels { visibility: hidden }`. Prefer CSS on `data-component-style` / `.labels-off` / `.hide-reversing-valve` / `data-background` / `data-line-style` / `data-line-color` / `data-line-width` / mode-based weather.
+5. **`prefers-reduced-motion`:** no particles; static arrows stay visible; dashed pipes stay static (no dashoffset tween).
 6. **Arrow reverse + mirror:** normalize rotations after heating reverse or indoor-right flip.
 7. **Icon equipment coords** are canonical (indoor-left) inside the flip group; simple-box boxes use already-mirrored `circuit.*` positions.
 8. **Control-panel label CSS:** `.control-panel label { flex-direction: column }`. Playback speed uses `.playback-hud label.speed-control { flex-direction: row }`.
@@ -111,8 +123,8 @@ VRF, geothermal, packaged units, aux heat, defrost animation, live psychrometric
 ## Product decisions already made
 
 - Audience: teaching / slide decks, not engineering design software.
-- Refrigerant: generic label; no property lookup. Line colors are a 4-stop temperature scale, not a property library.
+- Refrigerant: generic label; no property lookup. Default line colors are a 4-stop temperature scale, not a property library. Constant color is the house outline stroke.
 - Expansion device: TXV/EEV-style, not capillary-only.
 - V2 embed path: Office.js **content add-in**, not a task pane or third-party web viewer.
-- Default presentation: heating, indoor right, light theme, house & weather, role-based coil labels, XL font.
-- Layers: keep mounted `g.layer-*` groups; do not build a scene-graph that remounts SVG.
+- Default presentation: heating, indoor right, light theme, house & weather, role-based coil labels, XL font, **dashed** lines, temperature-based color, constant width & spacing.
+- Layers: keep mounted `g.layer-*` groups via `layer()`; do not build a scene-graph that remounts SVG.
