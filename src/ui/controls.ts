@@ -265,6 +265,176 @@ function fontSizeIcon(sizePx: number): m.Children {
   );
 }
 
+function simpleBoxStyleIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 1.7,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    m("rect", { x: 5.5, y: 5.5, width: 13, height: 13, rx: 1.5 }),
+  );
+}
+
+function abstractIconStyleIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 1.7,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    [
+      m("rect", { x: 4.5, y: 8, width: 8, height: 8, rx: 1.2 }),
+      m("circle", { cx: 17, cy: 12, r: 3.5 }),
+    ],
+  );
+}
+
+function sketchStyleIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 1.7,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    m("path", {
+      d: "M5.5 17.5 C8 12.5 10 10 12.5 11.5 S16.5 8.5 18.5 6.5",
+    }),
+  );
+}
+
+function crossSectionStyleIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 1.7,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    [
+      m("rect", { x: 4.5, y: 6.5, width: 15, height: 11, rx: 1.2 }),
+      m("line", {
+        x1: 12,
+        y1: 6.5,
+        x2: 12,
+        y2: 17.5,
+        "stroke-dasharray": "2.2 2.2",
+      }),
+      m("path", { d: "M12 8.5 L15.5 12 L12 15.5" }),
+    ],
+  );
+}
+
+function backgroundNoneIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 1.7,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    [
+      m("rect", { x: 5.5, y: 5.5, width: 13, height: 13, rx: 1.5 }),
+      m("line", { x1: 8, y1: 16, x2: 16, y2: 8 }),
+    ],
+  );
+}
+
+function backgroundHouseIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 1.6,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    [
+      m("path", { d: "M4 11 L12 4.2 L20 11" }),
+      m("rect", { x: 6, y: 11, width: 12, height: 8.5 }),
+    ],
+  );
+}
+
+function coilLabelRoleIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 1.6,
+      "stroke-linecap": "round",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    [
+      m("rect", { x: 4.5, y: 7.5, width: 6.5, height: 9, rx: 1 }),
+      m("line", { x1: 6, y1: 9.5, x2: 6, y2: 14.5 }),
+      m("line", { x1: 8, y1: 9.5, x2: 8, y2: 14.5 }),
+      m("line", { x1: 10, y1: 9.5, x2: 10, y2: 14.5 }),
+      m("rect", { x: 13, y: 7.5, width: 6.5, height: 9, rx: 1 }),
+      m("line", { x1: 14.5, y1: 9.5, x2: 14.5, y2: 14.5 }),
+      m("line", { x1: 16.5, y1: 9.5, x2: 16.5, y2: 14.5 }),
+      m("line", { x1: 18.5, y1: 9.5, x2: 18.5, y2: 14.5 }),
+    ],
+  );
+}
+
+function coilLabelLocationIcon(): m.Children {
+  return m(
+    "svg",
+    {
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 1.6,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      "aria-hidden": "true",
+      focusable: "false",
+    },
+    [
+      m("line", { x1: 12, y1: 5.5, x2: 12, y2: 18.5 }),
+      m("rect", { x: 5, y: 8.5, width: 5.5, height: 7, rx: 1 }),
+      m("circle", { cx: 7.8, cy: 12, r: 1.5 }),
+      m("rect", { x: 13.5, y: 10, width: 5.5, height: 4.2, rx: 1 }),
+    ],
+  );
+}
+
 type SquareSwitchOption<T extends string> = {
   value: T;
   label: string;
@@ -391,12 +561,53 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
           }),
         ]),
         m("div.square-switch-row", [
+          squareCycleSwitch<ComponentStyle>({
+            name: "Component style",
+            value: config.componentStyle,
+            disabled: true,
+            options: [
+              { value: "simpleBox", label: "Simple box", icon: simpleBoxStyleIcon },
+              { value: "icon", label: "Abstract icon", icon: abstractIconStyleIcon },
+              { value: "sketch", label: "Realistic sketch", icon: sketchStyleIcon },
+              {
+                value: "crossSection",
+                label: "Cross-section",
+                icon: crossSectionStyleIcon,
+              },
+            ],
+            onChange: (componentStyle) =>
+              onConfigChange({ ...config, componentStyle }),
+          }),
+          squareCycleSwitch<BackgroundStyle>({
+            name: "Background",
+            value: config.background,
+            options: [
+              { value: "none", label: "None", icon: backgroundNoneIcon },
+              { value: "house", label: "House & weather", icon: backgroundHouseIcon },
+            ],
+            onChange: (background) => onConfigChange({ ...config, background }),
+          }),
+          squareCycleSwitch<CoilLabelStyle>({
+            name: "Coil labels",
+            value: config.coilLabels,
+            options: [
+              { value: "role", label: "Evap / Cond", icon: coilLabelRoleIcon },
+              {
+                value: "location",
+                label: "Outdoor / Indoor",
+                icon: coilLabelLocationIcon,
+              },
+            ],
+            onChange: (coilLabels) => onConfigChange({ ...config, coilLabels }),
+          }),
+        ]),
+        m("div.square-switch-row", [
           squareCycleSwitch<IndoorSide>({
             name: "Indoor unit",
             value: config.indoorSide,
             options: [
-              { value: "left", label: "Right", icon: indoorUnitRightIcon },
-              { value: "right", label: "Left", icon: indoorUnitLeftIcon },
+              { value: "left", label: "Left", icon: indoorUnitRightIcon },
+              { value: "right", label: "Right", icon: indoorUnitLeftIcon },
             ],
             onChange: (indoorSide) => onConfigChange({ ...config, indoorSide }),
           }),
@@ -424,70 +635,6 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
               onConfigChange({ ...config, fontScale: scale });
             },
           }),
-        ]),
-        m("label", [
-          "Component style",
-          m(
-            "select",
-            {
-              value: config.componentStyle,
-              onchange: (event: Event) => {
-                const componentStyle = (event.target as HTMLSelectElement)
-                  .value as ComponentStyle;
-                onConfigChange({ ...config, componentStyle });
-              },
-            },
-            [
-              m("option", { value: "simpleBox" }, "Simple box"),
-              m("option", { value: "icon" }, "Abstract icon"),
-              m(
-                "option",
-                { value: "sketch", disabled: true },
-                "Realistic sketch",
-              ),
-              m(
-                "option",
-                { value: "crossSection", disabled: true },
-                "Cross-section",
-              ),
-            ],
-          ),
-        ]),
-        m("label", [
-          "Background",
-          m(
-            "select",
-            {
-              value: config.background,
-              onchange: (event: Event) => {
-                const background = (event.target as HTMLSelectElement)
-                  .value as BackgroundStyle;
-                onConfigChange({ ...config, background });
-              },
-            },
-            [
-              m("option", { value: "none" }, "None"),
-              m("option", { value: "house" }, "House context"),
-            ],
-          ),
-        ]),
-        m("label", [
-          "Coil labels",
-          m(
-            "select",
-            {
-              value: config.coilLabels,
-              onchange: (event: Event) => {
-                const coilLabels = (event.target as HTMLSelectElement)
-                  .value as CoilLabelStyle;
-                onConfigChange({ ...config, coilLabels });
-              },
-            },
-            [
-              m("option", { value: "role" }, "Evaporator / Condenser"),
-              m("option", { value: "location" }, "Indoor / Outdoor coil"),
-            ],
-          ),
         ]),
       ]),
 

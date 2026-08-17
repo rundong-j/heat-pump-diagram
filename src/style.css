@@ -127,24 +127,36 @@ body {
   stroke: none;
 }
 
-.diagram-scene[data-mode="heating"] .zone-indoor {
+.diagram-scene[data-background="none"] {
+  background: #ffffff;
+}
+
+.diagram-scene[data-background="none"] .zone-fill {
+  fill: #ffffff;
+}
+
+.diagram-scene[data-background="house"][data-mode="heating"] .zone-indoor {
   fill: var(--zone-warm);
 }
 
-.diagram-scene[data-mode="heating"] .zone-outdoor {
+.diagram-scene[data-background="house"][data-mode="heating"] .zone-outdoor {
   fill: var(--zone-cool);
 }
 
-.diagram-scene[data-mode="cooling"] .zone-indoor {
+.diagram-scene[data-background="house"][data-mode="cooling"] .zone-indoor {
   fill: var(--zone-cool);
 }
 
-.diagram-scene[data-mode="cooling"] .zone-outdoor {
+.diagram-scene[data-background="house"][data-mode="cooling"] .zone-outdoor {
   fill: var(--zone-warm);
 }
 
 .outdoor-weather {
   pointer-events: none;
+}
+
+.diagram-scene:not([data-background="house"]) .outdoor-weather {
+  visibility: hidden;
 }
 
 .weather-snow {
@@ -172,11 +184,11 @@ body {
   stroke-linecap: round;
 }
 
-.diagram-scene:not([data-mode="heating"]) .weather-snow {
+.diagram-scene[data-background="house"]:not([data-mode="heating"]) .weather-snow {
   visibility: hidden;
 }
 
-.diagram-scene:not([data-mode="cooling"]) .weather-sun {
+.diagram-scene[data-background="house"]:not([data-mode="cooling"]) .weather-sun {
   visibility: hidden;
 }
 
