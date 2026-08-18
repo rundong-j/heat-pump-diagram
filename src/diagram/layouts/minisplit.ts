@@ -40,6 +40,26 @@ type CircuitLayout = {
 
 const STATION_ORDER: StationId[] = ["discharge", "liquid", "twoPhase", "suction"];
 const ZONE_WIDTH = VIEWPORT_WIDTH / 2;
+const SIMPLE_BOX_WIDTH = 140;
+const SIMPLE_BOX_HEIGHT = 52;
+const SIMPLE_BOX_LOOP_TOP = 250;
+const SIMPLE_BOX_LOOP_BOTTOM = 405;
+const SIMPLE_BOX_COIL_Y = 328;
+
+/** X along a simple-box coil. Fraction 0 is the left edge, 1 is the right. */
+function boxXAtFraction(centerX: number, fraction: number): number {
+  return Math.round(
+    centerX - SIMPLE_BOX_WIDTH / 2 + SIMPLE_BOX_WIDTH * fraction,
+  );
+}
+
+/**
+ * Condenser riser at 1/3 from the left in screen space. Mirror swaps left/right,
+ * so invert the fraction in canonical (indoor-left) coordinates.
+ */
+function condenserRiserFraction(flip: boolean): number {
+  return flip ? 2 / 3 : 1 / 3;
+}
 
 function flipX(x: number): number {
   return VIEWPORT_WIDTH - x;
@@ -159,23 +179,40 @@ function reversingValveLayout(heating: boolean): CircuitLayout {
   };
 }
 
-function simpleBoxLayout(heating: boolean): CircuitLayout {
+function simpleBoxLayout(heating: boolean, flip: boolean): CircuitLayout {
+  const indoorCx = 145;
+  const outdoorCx = 840;
+  const condFrac = condenserRiserFraction(flip);
+  const indoorPipe = heating ? boxXAtFraction(indoorCx, condFrac) : indoorCx;
+  const outdoorPipe = heating ? outdoorCx : boxXAtFraction(outdoorCx, condFrac);
+  const top = SIMPLE_BOX_LOOP_TOP;
+  const bot = SIMPLE_BOX_LOOP_BOTTOM;
+  const mid = SIMPLE_BOX_COIL_Y;
+
   return {
-    loop: "M660,250 H840 V405 H145 V250 H660 Z",
-    hot: heating ? "M660,250 H145 V328" : "M660,250 H840 V328",
-    warm: heating ? "M145,328 V405 H660" : "M840,328 V405 H660",
-    cold: heating ? "M660,405 H840 V328" : "M660,405 H145 V328",
-    cool: heating ? "M840,328 V250 H660" : "M145,328 V250 H660",
-    indoorCoil: { x: 145, y: 328 },
-    outdoorCoil: { x: 840, y: 328 },
-    compressor: { x: 660, y: 250 },
-    expansion: { x: 660, y: 405 },
-    reversingValve: { x: 700, y: 250 },
+    loop: `M660,${top} H${outdoorPipe} V${bot} H${indoorPipe} V${top} H660 Z`,
+    hot: heating
+      ? `M660,${top} H${indoorPipe} V${mid}`
+      : `M660,${top} H${outdoorPipe} V${mid}`,
+    warm: heating
+      ? `M${indoorPipe},${mid} V${bot} H660`
+      : `M${outdoorPipe},${mid} V${bot} H660`,
+    cold: heating
+      ? `M660,${bot} H${outdoorPipe} V${mid}`
+      : `M660,${bot} H${indoorPipe} V${mid}`,
+    cool: heating
+      ? `M${outdoorPipe},${mid} V${top} H660`
+      : `M${indoorPipe},${mid} V${top} H660`,
+    indoorCoil: { x: indoorCx, y: mid },
+    outdoorCoil: { x: outdoorCx, y: mid },
+    compressor: { x: 660, y: top },
+    expansion: { x: 660, y: bot },
+    reversingValve: { x: 700, y: top },
     arrows: [
-      { x: 370, y: 250, rotation: 0 },
-      { x: 840, y: 328, rotation: 90 },
-      { x: 370, y: 405, rotation: 180 },
-      { x: 145, y: 328, rotation: -90 },
+      { x: 370, y: top, rotation: 0 },
+      { x: outdoorPipe, y: mid, rotation: 90 },
+      { x: 370, y: bot, rotation: 180 },
+      { x: indoorPipe, y: mid, rotation: -90 },
     ],
     stations: assignStations(
       {
@@ -227,7 +264,7 @@ export function circuitLayout(config: DiagramConfig): CircuitLayout {
   if (config.showReversingValve) {
     layout = reversingValveLayout(heating);
   } else if (config.componentStyle === "simpleBox") {
-    layout = simpleBoxLayout(heating);
+    layout = simpleBoxLayout(heating, config.indoorSide === "right");
   } else {
     layout = iconLayout(heating);
   }
@@ -266,12 +303,100 @@ function label(
   y: number,
   anchor = "middle",
   extraClass?: string,
+  key?: string,
 ): m.Vnode {
   return m(
     extraClass ? `text.diagram-label.${extraClass}` : "text.diagram-label",
-    { x, y, "text-anchor": anchor },
+    { x, y, "text-anchor": anchor, key },
     text,
   );
+}
+
+const AIR_FLOW_SHAFT = 26;
+const AIR_FLOW_HEAD_WIDTH = 42;
+const AIR_FLOW_HEAD_HEIGHT = 24;
+/** How far both ends sit to the right of the arc vertex (2/3 condenser mark). */
+const AIR_FLOW_SAGITTA = 24;
+
+function roundCoord(n: number): number {
+  return Math.round(n);
+}
+
+/**
+ * Uniform circular ring-section arrow. Center is to the right of the condenser,
+ * so the middle stays on the 2/3 mark and both ends curve rightward (`(` ).
+ */
+function condenserAirFlow(coil: Point): m.Vnode {
+  const loopTop = SIMPLE_BOX_LOOP_TOP;
+  const loopBot = SIMPLE_BOX_LOOP_BOTTOM;
+  const chord = loopBot - loopTop;
+  const s = AIR_FLOW_SAGITTA;
+  const radius = s / 2 + (chord * chord) / (8 * s);
+  const alpha = Math.acos(Math.min(1, (radius - s) / radius));
+  const xMid = boxXAtFraction(coil.x, 2 / 3);
+  const yMid = (loopTop + loopBot) / 2;
+  const cx = xMid + radius;
+  const cy = yMid;
+  const thetaTop = Math.PI + alpha;
+  const thetaBot = Math.PI - alpha;
+  const thetaBase = thetaBot + AIR_FLOW_HEAD_HEIGHT / radius;
+  const hs = AIR_FLOW_SHAFT / 2;
+  const hw = AIR_FLOW_HEAD_WIDTH / 2;
+  const r = roundCoord;
+
+  const polar = (rad: number, theta: number): Point => ({
+    x: cx + rad * Math.cos(theta),
+    y: cy + rad * Math.sin(theta),
+  });
+
+  const outerTop = polar(radius + hs, thetaTop);
+  const innerTop = polar(radius - hs, thetaTop);
+  const outerBase = polar(radius + hs, thetaBase);
+  const innerBase = polar(radius - hs, thetaBase);
+  const wingOuter = polar(radius + hw, thetaBase);
+  const wingInner = polar(radius - hw, thetaBase);
+  const tip = polar(radius, thetaBot);
+
+  // Minor left-side arc in SVG (y-down): sweep 0 from top to bottom, 1 on the return.
+  const d = [
+    `M${r(outerTop.x)},${r(outerTop.y)}`,
+    `A${r(radius + hs)} ${r(radius + hs)} 0 0 0 ${r(outerBase.x)},${r(outerBase.y)}`,
+    `L${r(wingOuter.x)},${r(wingOuter.y)}`,
+    `L${r(tip.x)},${r(tip.y)}`,
+    `L${r(wingInner.x)},${r(wingInner.y)}`,
+    `L${r(innerBase.x)},${r(innerBase.y)}`,
+    `A${r(radius - hs)} ${r(radius - hs)} 0 0 1 ${r(innerTop.x)},${r(innerTop.y)}`,
+    "Z",
+  ].join(" ");
+
+  return m("g.air-flow-condenser", { key: "air-flow-condenser" }, [
+    m(
+      "defs",
+      { key: "air-flow-defs" },
+      m(
+        "linearGradient",
+        {
+          id: "air-flow-condenser-gradient",
+          gradientUnits: "userSpaceOnUse",
+          x1: String(xMid),
+          y1: String(loopTop),
+          x2: String(xMid),
+          y2: String(loopBot),
+        },
+        [
+          m("stop.air-flow-grad-warm", {
+            offset: "0%",
+            "stop-opacity": "0",
+          }),
+          m("stop.air-flow-grad-hot", {
+            offset: "45%",
+            "stop-opacity": "1",
+          }),
+        ],
+      ),
+    ),
+    m("path.air-flow-arrow", { key: "air-flow-arrow", d }),
+  ]);
 }
 
 function houseContext(flip: boolean): m.Children {
@@ -486,6 +611,12 @@ export function minisplitScene(config: DiagramConfig): m.Children {
       ),
     ),
 
+    layer("air-flow", [
+      condenserAirFlow(
+        indoorRole === "condenser" ? circuit.indoorCoil : circuit.outdoorCoil,
+      ),
+    ]),
+
     layer("equipment", [
       m("g.icon-equipment", {
         key: "icon-equipment",
@@ -548,16 +679,16 @@ export function minisplitScene(config: DiagramConfig): m.Children {
           id: "indoorCoil",
           x: circuit.indoorCoil.x,
           y: circuit.indoorCoil.y,
-          width: 140,
-          height: 52,
+          width: SIMPLE_BOX_WIDTH,
+          height: SIMPLE_BOX_HEIGHT,
           label: coilLabel("indoor", indoorRole, config.coilLabels),
         }),
         componentBox({
           id: "outdoorCoil",
           x: circuit.outdoorCoil.x,
           y: circuit.outdoorCoil.y,
-          width: 140,
-          height: 52,
+          width: SIMPLE_BOX_WIDTH,
+          height: SIMPLE_BOX_HEIGHT,
           label: coilLabel("outdoor", outdoorRole, config.coilLabels),
         }),
         componentBox({
@@ -627,12 +758,16 @@ export function minisplitScene(config: DiagramConfig): m.Children {
         placeX(195),
         455,
         placeAnchor("middle"),
+        undefined,
+        "heat-indoor",
       ),
       label(
         heatFlowLabel(outdoorRole),
         placeX(755),
         475,
         placeAnchor("middle"),
+        undefined,
+        "heat-outdoor",
       ),
     ]),
 

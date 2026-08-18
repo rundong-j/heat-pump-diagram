@@ -435,8 +435,25 @@ body {
 
 .diagram-label {
   fill: var(--label);
+  stroke: none;
   font-size: calc(12px * var(--font-scale));
   font-family: inherit;
+}
+
+.air-flow-arrow {
+  fill: url(#air-flow-condenser-gradient);
+  stroke: none;
+  pointer-events: none;
+}
+
+.air-flow-grad-warm {
+  stop-color: var(--pipe-warm);
+  stop-opacity: 0;
+}
+
+.air-flow-grad-hot {
+  stop-color: var(--pipe-hot);
+  stop-opacity: 1;
 }
 
 .overlay-badge-bg {
@@ -482,8 +499,11 @@ body {
   visibility: hidden;
 }
 
+.diagram-scene:not([data-heat-transfer="on"]) .layer-heat-transfer,
+.diagram-scene:not([data-heat-transfer="on"]) .layer-air-flow,
 .layer-labels.is-hidden,
 .layer-heat-transfer.is-hidden,
+.layer-air-flow.is-hidden,
 .static-arrows.is-hidden,
 .hide-reversing-valve .reversing-valve,
 .hide-reversing-valve .reversing-valve-label,

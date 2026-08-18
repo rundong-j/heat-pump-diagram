@@ -16,7 +16,7 @@ If the UI looks stale after edits, kill stray Vite listeners on 5173–5180 and 
 | 0 | Vite/Mithril/TS shell, stable SVG viewport | Done |
 | 1 | Mini-split cooling loop, abstract icons, pauseable GSAP flow | Done |
 | 1+ | Simple-box style, reversing-valve show/hide, indoor/outdoor flip, layout polish | Done. RV HUD tile exists but is **disabled** (default off). |
-| 2 | Independent P/T/phase overlays; heating mode (reverse flow, coil role swap) | Done. Heating reverses particles/arrows, swaps coil roles, flips RV slide + TXV. Overlay checkboxes drive canned badges from `cycleData.ts`. |
+| 2 | Independent P/T/phase overlays; heating mode (reverse flow, coil role swap) | Done. Heating reverses particles/arrows, swaps coil roles, flips RV slide + TXV. Overlay checkboxes drive canned badges from `cycleData.ts`. **Heat transfer** overlay is enabled (default off). |
 | 2+ | Light/dark theme; zone fills; diagram font scale; coil label style | Done. Default **light**. Font size is a square switch (Small / Normal / Large / **XL default 1.3**). Coil labels: Evap / Cond vs Outdoor / Indoor. |
 | 2++ | Square-switch HUD; simplified playback; outdoor weather | Done. 3-column tiles. Playback is play-pause + speed slider + **screenshot** (4K JPEG save dialog). |
 | 2+++ | Four-color refrigerant lines | Done. ColorBrewer RdYlBu: hot / warm / cold / cool. Hot and cold stop at condenser / evaporator centers; warm and cool continue from there. |
@@ -50,7 +50,7 @@ src/
   diagram/viewport.ts           Shared 960×540 viewBox constants
   diagram/layer.ts              Always-mounted g.layer-* helper (key + data-role)
   diagram/scene.ts              Mithril SVG root; keyed so it does not remount
-  diagram/layouts/minisplit.ts  Paths, boxes, arrows, zones, house, weather, mirrors
+  diagram/layouts/minisplit.ts  Paths, boxes, arrows, air-flow, zones, house, weather, mirrors
   diagram/icons.ts              Geometric icons + simple-box helper
   animation/timeline.ts         GSAP flow (MotionPath) + dash offset + machine tweens
   ui/hudIcon.ts                 Shared 24×24 HUD SVG wrapper
@@ -72,9 +72,11 @@ src/
 3. **Indoor** (Left side \| Right side) · **Theme** (light bulb / moon) · **Font size** (Aa, default XL)
 4. **Line style** (Solid \| Dashed \| Arrow) · **Line color** (Temperature-based \| Constant) · **Line width & spacing** (Constant \| Pressure-based)
 
+**Overlays:** Labels · Pressure · Temperature · Phase · Direction · **Heat transfer**. Heat transfer stays mounted; CSS `[data-heat-transfer]` plus `is-hidden` show canned `heatFlowLabel()` text in `layer-heat-transfer` (Heat absorbed / Heat rejected) and a single thick condenser air-flow arrow in `layer-air-flow` (behind equipment). The arrow is a filled path with a warm→hot `linearGradient` that is transparent at the warm tail and opaque `--pipe-hot` at the tip so it reads as indoor air passing through the condenser. Independent of the Labels overlay, of simple-box hiding `.layer-labels`, and of Line color (air paths are not `.pipe`).
+
 **Layers** use `layer(name, children)` in `diagram/layer.ts`. That helper always returns keyed `<g class="layer-*">` with matching `data-role`. Groups **stay mounted**. Visibility is CSS `data-*` plus a few `classList` toggles in `SceneAnimation`. Do not conditionally create/destroy equipment groups.
 
-Layer order **back → front**: zone fills → outdoor weather → house outline → refrigerant **lines** (hot/warm/cold/cool) → invisible **loop** (particles) → **particles** → **arrows** → **equipment** (icon set AND simple-box set both in DOM) → labels → heat-transfer labels → P/T/phase badges.
+Layer order **back → front**: zone fills → outdoor weather → house outline → refrigerant **lines** (hot/warm/cold/cool) → invisible **loop** (particles) → **particles** → **arrows** → **air-flow** (condenser airflow, behind equipment) → **equipment** (icon set AND simple-box set both in DOM) → labels → heat-transfer labels → P/T/phase badges.
 
 `circuitLayout()` owns `loop` plus four colored `d` strings and box centers. **Hot** ends at the condenser Y; **warm** continues to the expansion valve; **cold** ends at the evaporator Y; **cool** continues to the compressor. Heating swaps which coil is condenser vs evaporator. The hidden `loop` path still traces the full rectangle for GSAP. Rebuild flow (particles **and** dashes) only when `topologyKey` changes (`showReversingValve`, `componentStyle`, `indoorSide`, `mode`).
 
@@ -86,11 +88,11 @@ Layer order **back → front**: zone fills → outdoor weather → house outline
 
 Heating reverses arrow rotations (normalize `% 360` before `flipRotation`). `mirrorLayout()` flips X for `indoorSide: "right"`. Icon equipment flips with `translate(960 0) scale(-1 1)` using `VIEWPORT_WIDTH`.
 
-**Simple-box loop (RV off):** compressor and expansion share outdoor x before mirror (`660`); expansion under compressor. Coil centers `840` / `145` at y=`328`. Paired arrows at x=`370`.
+**Simple-box loop (RV off):** compressor and expansion share outdoor x before mirror (`660`); expansion under compressor. Coil **box** centers `840` / `145` at y=`328`, width `140`. The condenser-side riser is at **1/3 from the left** of that box in screen space (canonical fraction is inverted when `indoorSide: "right"` so mirroring does not swap it). Evaporator riser stays on the box center. Paired arrows at x=`370`. Heat-transfer arrow is a **circular ring section** (constant radius, sagitta `24`) through the **2/3** mark of the condenser: bulge to the left (`(` ), both ends to the right; shaft `26` / head `42`. Spans the simple-box loop Y (`250`–`405`). Gradient is transparent at the warm tail, opaque hot from mid-shaft through the tip.
 
 **House & weather:** both always in the DOM. Shown only when `data-background="house"` (plain white + no weather/zones/outline when `none`). Weather: `[data-mode="heating"|"cooling"]` on `.weather-snow` / `.weather-sun`.
 
-Compressor pulse: `transformOrigin: "50% 50%"`. Fan blades still rotate around `"0px 0px"`. Particles stay white. Heat-transfer HUD option stays disabled.
+Compressor pulse: `transformOrigin: "50% 50%"`. Fan blades still rotate around `"0px 0px"`. Particles stay white. Heat-transfer overlay is enabled (default off); canned “Heat absorbed” / “Heat rejected” labels follow coil roles. Condenser air-flow is a **circular ring-section arrow** in `layer-air-flow` (behind equipment): constant radius, middle on the condenser 2/3 line, bulge to the left, warm→hot gradient along loop height (`userSpaceOnUse`) fading in from the top.
 
 Viewport: `VIEWPORT_WIDTH` / `VIEWPORT_HEIGHT` / `VIEWBOX` in `diagram/viewport.ts` (960×540). Scene, layout mirroring/zones, and 4K screenshot math all import it. HUD glyphs go through `hudIcon()` in `ui/hudIcon.ts`.
 
@@ -101,12 +103,12 @@ Screenshot: clones `.diagram-scene`, inlines CSS variables + stylesheets, raster
 1. **Mithril vs GSAP:** SVG scene created once (`key: "diagram-scene"`). Destroying SVG nodes kills tweens. Prefer CSS / `data-*` / in-place attribute patches. Icon and simple-box equipment must **both** stay in the DOM. Particles stay in the DOM when dashed.
 2. **Fragment keys:** children of one parent must **all** have keys or **none** do.
 3. **Do not put labels inside a group that inherits `stroke`.** Box labels: `fill: var(--label); stroke: none`.
-4. **Simple box vs overlay labels:** `[data-component-style="simpleBox"] .layer-labels { visibility: hidden }`. Prefer CSS on `data-component-style` / `.labels-off` / `.hide-reversing-valve` / `data-background` / `data-line-style` / `data-line-color` / `data-line-width` / mode-based weather.
+4. **Simple box vs overlay labels:** `[data-component-style="simpleBox"] .layer-labels { visibility: hidden }`. Heat-transfer labels stay in `layer-heat-transfer` and are **not** hidden by simple-box. Air-flow stays in `layer-air-flow` (behind equipment) and uses the same `data-heat-transfer` / `is-hidden` visibility. Prefer CSS on `data-component-style` / `.labels-off` / `.hide-reversing-valve` / `data-background` / `data-line-style` / `data-line-color` / `data-line-width` / `data-heat-transfer` / mode-based weather.
 5. **`prefers-reduced-motion`:** no particles; static overlay arrows stay visible; dashed/arrow pipes stay static (no offset tween).
 6. **Arrow reverse + mirror:** normalize rotations after heating reverse or indoor-right flip.
 7. **Icon equipment coords** are canonical (indoor-left) inside the flip group; simple-box boxes use already-mirrored `circuit.*` positions.
 8. **Control-panel label CSS:** `.control-panel label { flex-direction: column }`. Playback speed uses `.playback-hud label.speed-control { flex-direction: row }`.
-9. **Disabled HUD tiles** (Type, reversing valve, component style, heat transfer) are reserved product surface — do not delete.
+9. **Disabled HUD tiles** (Type, reversing valve, component style) are reserved product surface — do not delete.
 10. **Local URL** must include the Vite `base` path: `/heat-pump-diagram/`. Connection refused on 5173 = server not running.
 
 ## Remaining work (priority)

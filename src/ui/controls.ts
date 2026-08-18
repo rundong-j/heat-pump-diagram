@@ -512,7 +512,6 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
           "heatTransfer",
           "Heat transfer",
           (overlays) => onConfigChange({ ...config, overlays }),
-          true,
         ),
       ]),
 

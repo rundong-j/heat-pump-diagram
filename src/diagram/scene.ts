@@ -57,6 +57,9 @@ export const DiagramScene: m.Component<SceneAttrs> = {
         "data-line-style": vnode.attrs.config.lineStyle,
         "data-line-color": vnode.attrs.config.lineColor,
         "data-line-width": vnode.attrs.config.lineWidth,
+        "data-heat-transfer": vnode.attrs.config.overlays.heatTransfer
+          ? "on"
+          : "off",
         style: {
           "--font-scale": String(vnode.attrs.config.fontScale),
         },
