@@ -16,7 +16,7 @@ If the UI looks stale after edits, kill stray Vite listeners on 5173–5180 and 
 | 0 | Vite/Mithril/TS shell, stable SVG viewport | Done |
 | 1 | Mini-split cooling loop, abstract icons, pauseable GSAP flow | Done |
 | 1+ | Simple-box style, reversing-valve show/hide, indoor/outdoor flip, layout polish | Done. RV HUD tile exists but is **disabled** (default off). |
-| 2 | Independent P/T/phase overlays; heating mode (reverse flow, coil role swap) | Done. Heating reverses particles/arrows, swaps coil roles, flips RV slide + TXV. Overlay checkboxes drive canned badges from `cycleData.ts`. **Heat transfer** overlay is enabled (default off). |
+| 2 | Independent P/T/phase overlays; heating mode (reverse flow, coil role swap) | Done. Heating reverses particles/arrows, swaps coil roles, flips RV slide + TXV. Overlay checkboxes drive canned badges from `cycleData.ts`. **Heat transfer** overlay is enabled (default **on**). |
 | 2+ | Light/dark theme; zone fills; diagram font scale; coil label style | Done. Default **light**. Font size is a square switch (Small / Normal / Large / **XL default 1.3**). Coil labels: Evap / Cond vs Outdoor / Indoor. |
 | 2++ | Square-switch HUD; simplified playback; outdoor weather | Done. 3-column tiles. Playback is play-pause + speed slider + **screenshot** (4K JPEG save dialog). |
 | 2+++ | Four-color refrigerant lines | Done. ColorBrewer RdYlBu: hot / warm / cold / cool. Hot and cold stop at condenser / evaporator centers; warm and cool continue from there. |
@@ -35,7 +35,7 @@ Defined in `src/model/types.ts` `createDefaultConfig()`:
 - Indoor unit on the **right**
 - Coil labels: **role** (Evaporator / Condenser)
 - Font scale **1.3** (XL)
-- Labels and direction on; P/T/phase and **heat transfer** off
+- Labels, direction, and **heat transfer** on; P/T/phase off
 - **Line style dashed**; **line color temperature-based**; **line width & spacing pressure-based**
 - Playback playing at **1×** (`LOOP_SECONDS = 28` in `src/animation/timeline.ts`)
 
@@ -72,7 +72,7 @@ src/
 3. **Indoor** (Left side \| Right side) · **Theme** (light bulb / moon) · **Font size** (Aa, default XL)
 4. **Line style** (Solid \| Dashed \| Arrow) · **Line color** (Temperature-based \| Constant) · **Line width & spacing** (Constant \| Pressure-based)
 
-**Overlays:** Labels · Pressure · Temperature · Phase · Direction · **Heat transfer**. Heat transfer stays mounted; CSS `[data-heat-transfer]` plus `is-hidden` show canned `heatFlowLabel()` text in `layer-heat-transfer` (Heat absorbed / Heat rejected) and a single thick condenser air-flow arrow in `layer-air-flow` (behind equipment). Enabling it also insets the simple-box refrigerant loop (left coil 2/3, right coil 1/3) so the arrows have room; unchecking restores centered risers and rebuilds flow via `topologyKey`. The arrow is a filled path with a warm→hot `linearGradient` that is transparent at the warm tail and opaque `--pipe-hot` at the tip so it reads as indoor air passing through the condenser. Independent of the Labels overlay, of simple-box hiding `.layer-labels`, and of Line color (air paths are not `.pipe`).
+**Overlays:** Labels · Pressure · Temperature · Phase · Direction · **Heat transfer**. Heat transfer stays mounted; CSS `[data-heat-transfer]` plus `is-hidden` show canned `heatFlowLabel()` text in `layer-heat-transfer` (Heat absorbed / Heat rejected) and two thick air-flow arrows in `layer-air-flow` (behind equipment): condenser (down, warm→hot) and evaporator (up, cool→cold). Enabling it also insets the simple-box refrigerant loop (left coil 2/3, right coil 1/3) so the arrows have room; unchecking restores centered risers and rebuilds flow via `topologyKey`. Each arrow is a filled path with a `linearGradient` that is transparent at the tail and opaque at the tip. Independent of the Labels overlay, of simple-box hiding `.layer-labels`, and of Line color (air paths are not `.pipe`).
 
 **Layers** use `layer(name, children)` in `diagram/layer.ts`. That helper always returns keyed `<g class="layer-*">` with matching `data-role`. Groups **stay mounted**. Visibility is CSS `data-*` plus a few `classList` toggles in `SceneAnimation`. Do not conditionally create/destroy equipment groups.
 
@@ -88,11 +88,11 @@ Layer order **back → front**: zone fills → outdoor weather → house outline
 
 Heating reverses arrow rotations (normalize `% 360` before `flipRotation`). `mirrorLayout()` flips X for `indoorSide: "right"`. Icon equipment flips with `translate(960 0) scale(-1 1)` using `VIEWPORT_WIDTH`.
 
-**Simple-box loop (RV off):** compressor and expansion share outdoor x before mirror (`660`); expansion under compressor. Coil **box** centers `840` / `145` at y=`328`, width `140`. Default (heat-transfer **off**) risers pass through **both box centers**. With heat transfer **on**, the loop insets to make room for arrows: **left-coil** riser at **2/3 from the left**, **right-coil** riser at **1/3 from the left**, in screen space, regardless of evap/cond or indoor/outdoor. Canonical fractions invert when `indoorSide: "right"` so mirroring does not swap them. Paired arrows at x=`370`. Heat-transfer arrow is a **circular ring section** (constant radius, sagitta `24`) on the **outside** of the loop: **1/3** of the left coil with bulge right (`)` ), or **2/3** of the right coil with bulge left (`(` ); both ends sit outward. Shaft `26` / head `42`. Spans the simple-box loop Y (`250`–`405`). Gradient is transparent at the warm tail, opaque hot from mid-shaft through the tip.
+**Simple-box loop (RV off):** compressor and expansion share outdoor x before mirror (`660`); expansion under compressor. Coil **box** centers `840` / `145` at y=`328`, width `140`. Default (heat-transfer **on**) insets the loop to make room for arrows: **left-coil** riser at **2/3 from the left**, **right-coil** riser at **1/3 from the left**, in screen space, regardless of evap/cond or indoor/outdoor. Unchecking heat transfer restores risers through **both box centers**. Canonical fractions invert when `indoorSide: "right"` so mirroring does not swap them. Paired arrows at x=`370`. Heat-transfer arrows are **circular ring sections** (constant radius, sagitta `24`) on the **outside** of the loop at **1/3** of a left coil (bulge right `)` ) or **2/3** of a right coil (bulge left `(` ); both ends sit outward. Condenser points **down** (transparent warm → opaque hot). Evaporator points **up** (transparent cool → opaque cold). Shaft `26` / head `42`. Span the simple-box loop Y (`250`–`405`).
 
 **House & weather:** both always in the DOM. Shown only when `data-background="house"` (plain white + no weather/zones/outline when `none`). Weather: `[data-mode="heating"|"cooling"]` on `.weather-snow` / `.weather-sun`.
 
-Compressor pulse: `transformOrigin: "50% 50%"`. Fan blades still rotate around `"0px 0px"`. Particles stay white. Heat-transfer overlay is enabled (default off); canned “Heat absorbed” / “Heat rejected” labels follow coil roles. Condenser air-flow is a **circular ring-section arrow** in `layer-air-flow` (behind equipment): constant radius, middle on the outer 1/3 or 2/3 line, bulge **inward toward the loop** (right `)` on the left coil, left `(` on the right), warm→hot gradient along loop height (`userSpaceOnUse`) fading in from the top.
+Compressor pulse: `transformOrigin: "50% 50%"`. Fan blades still rotate around `"0px 0px"`. Particles stay white. Heat-transfer overlay is enabled (default **on**); canned “Heat absorbed” / “Heat rejected” labels follow coil roles. Both air-flow arrows stay mounted in `layer-air-flow` (behind equipment): condenser reject (down, warm→hot) on the condenser coil, evaporator absorb (up, cool→cold) on the evaporator coil. Same outer 1/3 or 2/3 line and inward bulge. Gradients are `userSpaceOnUse` along loop height, fading in from the tail.
 
 Viewport: `VIEWPORT_WIDTH` / `VIEWPORT_HEIGHT` / `VIEWBOX` in `diagram/viewport.ts` (960×540). Scene, layout mirroring/zones, and 4K screenshot math all import it. HUD glyphs go through `hudIcon()` in `ui/hudIcon.ts`.
 
@@ -128,5 +128,5 @@ VRF, geothermal, packaged units, aux heat, defrost animation, live psychrometric
 - Refrigerant: generic label; no property lookup. Default line colors are a 4-stop temperature scale, not a property library. Constant color is the house outline stroke.
 - Expansion device: TXV/EEV-style, not capillary-only.
 - V2 embed path: Office.js **content add-in**, not a task pane or third-party web viewer.
-- Default presentation: heating, indoor right, light theme, house & weather, role-based coil labels, XL font, **dashed** lines, temperature-based color, **pressure-based** width & spacing.
+- Default presentation: heating, indoor right, light theme, house & weather, role-based coil labels, XL font, **dashed** lines, temperature-based color, **pressure-based** width & spacing, **heat transfer on**.
 - Layers: keep mounted `g.layer-*` groups via `layer()`; do not build a scene-graph that remounts SVG.

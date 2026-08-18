@@ -60,7 +60,7 @@ export function createDefaultConfig(): DiagramConfig {
       temperature: false,
       phase: false,
       direction: true,
-      heatTransfer: false,
+      heatTransfer: true,
     },
     playback: {
       playing: true,

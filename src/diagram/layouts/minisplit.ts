@@ -349,12 +349,21 @@ function roundCoord(n: number): number {
   return Math.round(n);
 }
 
+type AirFlowKind = "reject" | "absorb";
+
 /**
  * Uniform circular ring-section arrow on the outside of the refrigerant loop.
- * Left condenser: 1/3 mark, bulge right `)` . Right condenser: 2/3 mark, bulge
- * left `(` . Ends sit outward; the head points down.
+ * Left coil: 1/3 mark, bulge right `)` . Right coil: 2/3 mark, bulge left `(` .
+ * Reject (condenser) points down with warm→hot. Absorb (evaporator) points up
+ * with cool→cold. Ends sit outward.
  */
-function condenserAirFlow(coil: Point, onLeft: boolean): m.Vnode {
+function coilAirFlow(opts: {
+  coil: Point;
+  onLeft: boolean;
+  pointUp: boolean;
+  kind: AirFlowKind;
+}): m.Vnode {
+  const { coil, onLeft, pointUp, kind } = opts;
   const loopTop = SIMPLE_BOX_LOOP_TOP;
   const loopBot = SIMPLE_BOX_LOOP_BOTTOM;
   const chord = loopBot - loopTop;
@@ -364,69 +373,92 @@ function condenserAirFlow(coil: Point, onLeft: boolean): m.Vnode {
   const xMid = boxXAtFraction(coil.x, onLeft ? 1 / 3 : 2 / 3);
   const yMid = (loopTop + loopBot) / 2;
   const bulgeLeft = !onLeft;
+  const goingDown = !pointUp;
   const cx = bulgeLeft ? xMid + radius : xMid - radius;
   const cy = yMid;
   const thetaTop = bulgeLeft ? Math.PI + alpha : -alpha;
   const thetaBot = bulgeLeft ? Math.PI - alpha : alpha;
+  const thetaStart = goingDown ? thetaTop : thetaBot;
+  const thetaTip = goingDown ? thetaBot : thetaTop;
   const headDelta = AIR_FLOW_HEAD_HEIGHT / radius;
-  const thetaBase = bulgeLeft ? thetaBot + headDelta : thetaBot - headDelta;
+  const thetaIncreases =
+    (bulgeLeft && pointUp) || (!bulgeLeft && goingDown);
+  const thetaBase = thetaIncreases
+    ? thetaTip - headDelta
+    : thetaTip + headDelta;
   const hs = AIR_FLOW_SHAFT / 2;
   const hw = AIR_FLOW_HEAD_WIDTH / 2;
   const r = roundCoord;
-  const outerSweep = bulgeLeft ? 0 : 1;
-  const innerSweep = bulgeLeft ? 1 : 0;
+  const outerSweep = bulgeLeft === goingDown ? 0 : 1;
+  const innerSweep = 1 - outerSweep;
 
   const polar = (rad: number, theta: number): Point => ({
     x: cx + rad * Math.cos(theta),
     y: cy + rad * Math.sin(theta),
   });
 
-  const outerTop = polar(radius + hs, thetaTop);
-  const innerTop = polar(radius - hs, thetaTop);
+  const outerStart = polar(radius + hs, thetaStart);
+  const innerStart = polar(radius - hs, thetaStart);
   const outerBase = polar(radius + hs, thetaBase);
   const innerBase = polar(radius - hs, thetaBase);
   const wingOuter = polar(radius + hw, thetaBase);
   const wingInner = polar(radius - hw, thetaBase);
-  const tip = polar(radius, thetaBot);
+  const tip = polar(radius, thetaTip);
 
   const d = [
-    `M${r(outerTop.x)},${r(outerTop.y)}`,
+    `M${r(outerStart.x)},${r(outerStart.y)}`,
     `A${r(radius + hs)} ${r(radius + hs)} 0 0 ${outerSweep} ${r(outerBase.x)},${r(outerBase.y)}`,
     `L${r(wingOuter.x)},${r(wingOuter.y)}`,
     `L${r(tip.x)},${r(tip.y)}`,
     `L${r(wingInner.x)},${r(wingInner.y)}`,
     `L${r(innerBase.x)},${r(innerBase.y)}`,
-    `A${r(radius - hs)} ${r(radius - hs)} 0 0 ${innerSweep} ${r(innerTop.x)},${r(innerTop.y)}`,
+    `A${r(radius - hs)} ${r(radius - hs)} 0 0 ${innerSweep} ${r(innerStart.x)},${r(innerStart.y)}`,
     "Z",
   ].join(" ");
 
-  return m("g.air-flow-condenser", { key: "air-flow-condenser" }, [
+  const gradientId =
+    kind === "reject"
+      ? "air-flow-condenser-gradient"
+      : "air-flow-evaporator-gradient";
+  const groupKey =
+    kind === "reject" ? "air-flow-condenser" : "air-flow-evaporator";
+  const tailStop =
+    kind === "reject" ? "air-flow-grad-warm" : "air-flow-grad-cool";
+  const tipStop =
+    kind === "reject" ? "air-flow-grad-hot" : "air-flow-grad-cold";
+  const yTail = pointUp ? loopBot : loopTop;
+  const yTipGrad = pointUp ? loopTop : loopBot;
+
+  return m(`g.${groupKey}`, { key: groupKey }, [
     m(
       "defs",
-      { key: "air-flow-defs" },
+      { key: `${groupKey}-defs` },
       m(
         "linearGradient",
         {
-          id: "air-flow-condenser-gradient",
+          id: gradientId,
           gradientUnits: "userSpaceOnUse",
           x1: String(xMid),
-          y1: String(loopTop),
+          y1: String(yTail),
           x2: String(xMid),
-          y2: String(loopBot),
+          y2: String(yTipGrad),
         },
         [
-          m("stop.air-flow-grad-warm", {
+          m(`stop.${tailStop}`, {
             offset: "0%",
             "stop-opacity": "0",
           }),
-          m("stop.air-flow-grad-hot", {
+          m(`stop.${tipStop}`, {
             offset: "45%",
             "stop-opacity": "1",
           }),
         ],
       ),
     ),
-    m("path.air-flow-arrow", { key: "air-flow-arrow", d }),
+    m(`path.air-flow-arrow.air-flow-arrow-${kind}`, {
+      key: `${groupKey}-arrow`,
+      d,
+    }),
   ]);
 }
 
@@ -539,6 +571,8 @@ export function minisplitScene(config: DiagramConfig): m.Children {
   const outdoorRole = indoorRole === "evaporator" ? "condenser" : "evaporator";
   const condenserCoil =
     indoorRole === "condenser" ? circuit.indoorCoil : circuit.outdoorCoil;
+  const evaporatorCoil =
+    indoorRole === "evaporator" ? circuit.indoorCoil : circuit.outdoorCoil;
   const readings = CYCLE_READINGS[config.mode];
   const flip = config.indoorSide === "right";
   const placeX = (x: number) => (flip ? flipX(x) : x);
@@ -645,7 +679,18 @@ export function minisplitScene(config: DiagramConfig): m.Children {
     ),
 
     layer("air-flow", [
-      condenserAirFlow(condenserCoil, condenserCoil.x < ZONE_WIDTH),
+      coilAirFlow({
+        coil: condenserCoil,
+        onLeft: condenserCoil.x < ZONE_WIDTH,
+        pointUp: false,
+        kind: "reject",
+      }),
+      coilAirFlow({
+        coil: evaporatorCoil,
+        onLeft: evaporatorCoil.x < ZONE_WIDTH,
+        pointUp: true,
+        kind: "absorb",
+      }),
     ]),
 
     layer("equipment", [

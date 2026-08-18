@@ -441,9 +441,16 @@ body {
 }
 
 .air-flow-arrow {
-  fill: url(#air-flow-condenser-gradient);
   stroke: none;
   pointer-events: none;
+}
+
+.air-flow-arrow-reject {
+  fill: url(#air-flow-condenser-gradient);
+}
+
+.air-flow-arrow-absorb {
+  fill: url(#air-flow-evaporator-gradient);
 }
 
 .air-flow-grad-warm {
@@ -453,6 +460,16 @@ body {
 
 .air-flow-grad-hot {
   stop-color: var(--pipe-hot);
+  stop-opacity: 1;
+}
+
+.air-flow-grad-cool {
+  stop-color: var(--pipe-cool);
+  stop-opacity: 0;
+}
+
+.air-flow-grad-cold {
+  stop-color: var(--pipe-cold);
   stop-opacity: 1;
 }
 
