@@ -54,11 +54,31 @@ function boxXAtFraction(centerX: number, fraction: number): number {
 }
 
 /**
- * Condenser riser at 1/3 from the left in screen space. Mirror swaps left/right,
- * so invert the fraction in canonical (indoor-left) coordinates.
+ * Canonical fraction that lands at `screenFromLeft` of a coil after optional
+ * mirroring (0 = left edge in screen space).
  */
-function condenserRiserFraction(flip: boolean): number {
-  return flip ? 2 / 3 : 1 / 3;
+function canonicalFractionForScreen(flip: boolean, screenFromLeft: number): number {
+  return flip ? 1 - screenFromLeft : screenFromLeft;
+}
+
+/**
+ * Heat-transfer overlay insets the loop: left coil at 2/3 from the left in
+ * screen space, right coil at 1/3, regardless of evap/cond or indoor/outdoor.
+ * With the overlay off, both risers stay on the box centers.
+ */
+function coilRiserX(
+  centerX: number,
+  isLeftCoil: boolean,
+  flip: boolean,
+  compact: boolean,
+): number {
+  if (!compact) {
+    return centerX;
+  }
+  return boxXAtFraction(
+    centerX,
+    canonicalFractionForScreen(flip, isLeftCoil ? 2 / 3 : 1 / 3),
+  );
 }
 
 function flipX(x: number): number {
@@ -179,12 +199,15 @@ function reversingValveLayout(heating: boolean): CircuitLayout {
   };
 }
 
-function simpleBoxLayout(heating: boolean, flip: boolean): CircuitLayout {
+function simpleBoxLayout(
+  heating: boolean,
+  flip: boolean,
+  compact: boolean,
+): CircuitLayout {
   const indoorCx = 145;
   const outdoorCx = 840;
-  const condFrac = condenserRiserFraction(flip);
-  const indoorPipe = heating ? boxXAtFraction(indoorCx, condFrac) : indoorCx;
-  const outdoorPipe = heating ? outdoorCx : boxXAtFraction(outdoorCx, condFrac);
+  const indoorPipe = coilRiserX(indoorCx, !flip, flip, compact);
+  const outdoorPipe = coilRiserX(outdoorCx, flip, flip, compact);
   const top = SIMPLE_BOX_LOOP_TOP;
   const bot = SIMPLE_BOX_LOOP_BOTTOM;
   const mid = SIMPLE_BOX_COIL_Y;
@@ -264,7 +287,11 @@ export function circuitLayout(config: DiagramConfig): CircuitLayout {
   if (config.showReversingValve) {
     layout = reversingValveLayout(heating);
   } else if (config.componentStyle === "simpleBox") {
-    layout = simpleBoxLayout(heating, config.indoorSide === "right");
+    layout = simpleBoxLayout(
+      heating,
+      config.indoorSide === "right",
+      config.overlays.heatTransfer,
+    );
   } else {
     layout = iconLayout(heating);
   }
@@ -277,7 +304,7 @@ export function circuitLayout(config: DiagramConfig): CircuitLayout {
 }
 
 export function topologyKey(config: DiagramConfig): string {
-  return `${config.showReversingValve}:${config.componentStyle}:${config.indoorSide}:${config.mode}`;
+  return `${config.showReversingValve}:${config.componentStyle}:${config.indoorSide}:${config.mode}:${config.overlays.heatTransfer}`;
 }
 
 const PARTICLE_COUNT = 8;
@@ -315,7 +342,7 @@ function label(
 const AIR_FLOW_SHAFT = 26;
 const AIR_FLOW_HEAD_WIDTH = 42;
 const AIR_FLOW_HEAD_HEIGHT = 24;
-/** How far both ends sit to the right of the arc vertex (2/3 condenser mark). */
+/** How far both ends sit from the arc vertex (away from the loop). */
 const AIR_FLOW_SAGITTA = 24;
 
 function roundCoord(n: number): number {
@@ -323,26 +350,31 @@ function roundCoord(n: number): number {
 }
 
 /**
- * Uniform circular ring-section arrow. Center is to the right of the condenser,
- * so the middle stays on the 2/3 mark and both ends curve rightward (`(` ).
+ * Uniform circular ring-section arrow on the outside of the refrigerant loop.
+ * Left condenser: 1/3 mark, bulge right `)` . Right condenser: 2/3 mark, bulge
+ * left `(` . Ends sit outward; the head points down.
  */
-function condenserAirFlow(coil: Point): m.Vnode {
+function condenserAirFlow(coil: Point, onLeft: boolean): m.Vnode {
   const loopTop = SIMPLE_BOX_LOOP_TOP;
   const loopBot = SIMPLE_BOX_LOOP_BOTTOM;
   const chord = loopBot - loopTop;
   const s = AIR_FLOW_SAGITTA;
   const radius = s / 2 + (chord * chord) / (8 * s);
   const alpha = Math.acos(Math.min(1, (radius - s) / radius));
-  const xMid = boxXAtFraction(coil.x, 2 / 3);
+  const xMid = boxXAtFraction(coil.x, onLeft ? 1 / 3 : 2 / 3);
   const yMid = (loopTop + loopBot) / 2;
-  const cx = xMid + radius;
+  const bulgeLeft = !onLeft;
+  const cx = bulgeLeft ? xMid + radius : xMid - radius;
   const cy = yMid;
-  const thetaTop = Math.PI + alpha;
-  const thetaBot = Math.PI - alpha;
-  const thetaBase = thetaBot + AIR_FLOW_HEAD_HEIGHT / radius;
+  const thetaTop = bulgeLeft ? Math.PI + alpha : -alpha;
+  const thetaBot = bulgeLeft ? Math.PI - alpha : alpha;
+  const headDelta = AIR_FLOW_HEAD_HEIGHT / radius;
+  const thetaBase = bulgeLeft ? thetaBot + headDelta : thetaBot - headDelta;
   const hs = AIR_FLOW_SHAFT / 2;
   const hw = AIR_FLOW_HEAD_WIDTH / 2;
   const r = roundCoord;
+  const outerSweep = bulgeLeft ? 0 : 1;
+  const innerSweep = bulgeLeft ? 1 : 0;
 
   const polar = (rad: number, theta: number): Point => ({
     x: cx + rad * Math.cos(theta),
@@ -357,15 +389,14 @@ function condenserAirFlow(coil: Point): m.Vnode {
   const wingInner = polar(radius - hw, thetaBase);
   const tip = polar(radius, thetaBot);
 
-  // Minor left-side arc in SVG (y-down): sweep 0 from top to bottom, 1 on the return.
   const d = [
     `M${r(outerTop.x)},${r(outerTop.y)}`,
-    `A${r(radius + hs)} ${r(radius + hs)} 0 0 0 ${r(outerBase.x)},${r(outerBase.y)}`,
+    `A${r(radius + hs)} ${r(radius + hs)} 0 0 ${outerSweep} ${r(outerBase.x)},${r(outerBase.y)}`,
     `L${r(wingOuter.x)},${r(wingOuter.y)}`,
     `L${r(tip.x)},${r(tip.y)}`,
     `L${r(wingInner.x)},${r(wingInner.y)}`,
     `L${r(innerBase.x)},${r(innerBase.y)}`,
-    `A${r(radius - hs)} ${r(radius - hs)} 0 0 1 ${r(innerTop.x)},${r(innerTop.y)}`,
+    `A${r(radius - hs)} ${r(radius - hs)} 0 0 ${innerSweep} ${r(innerTop.x)},${r(innerTop.y)}`,
     "Z",
   ].join(" ");
 
@@ -506,6 +537,8 @@ export function minisplitScene(config: DiagramConfig): m.Children {
   const heating = config.mode === "heating";
   const indoorRole = indoorCoilRole(config.mode);
   const outdoorRole = indoorRole === "evaporator" ? "condenser" : "evaporator";
+  const condenserCoil =
+    indoorRole === "condenser" ? circuit.indoorCoil : circuit.outdoorCoil;
   const readings = CYCLE_READINGS[config.mode];
   const flip = config.indoorSide === "right";
   const placeX = (x: number) => (flip ? flipX(x) : x);
@@ -612,9 +645,7 @@ export function minisplitScene(config: DiagramConfig): m.Children {
     ),
 
     layer("air-flow", [
-      condenserAirFlow(
-        indoorRole === "condenser" ? circuit.indoorCoil : circuit.outdoorCoil,
-      ),
+      condenserAirFlow(condenserCoil, condenserCoil.x < ZONE_WIDTH),
     ]),
 
     layer("equipment", [
