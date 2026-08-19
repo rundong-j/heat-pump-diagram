@@ -453,6 +453,64 @@ body {
   fill: url(#air-flow-evaporator-gradient);
 }
 
+.air-flow-motion {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.air-flow-stem {
+  fill: none;
+  stroke-width: 26;
+  stroke-linecap: butt;
+  stroke-linejoin: round;
+}
+
+.air-flow-stem-reject-in {
+  stroke: var(--pipe-warm);
+}
+
+.air-flow-stem-reject-out {
+  stroke: var(--pipe-hot);
+}
+
+.air-flow-stem-absorb-in {
+  stroke: var(--pipe-cool);
+}
+
+.air-flow-stem-absorb-out {
+  stroke: var(--pipe-cold);
+}
+
+.air-flow-head {
+  stroke: none;
+}
+
+.air-flow-head-reject-in {
+  fill: var(--pipe-warm);
+}
+
+.air-flow-head-reject-out {
+  fill: var(--pipe-hot);
+}
+
+.air-flow-head-absorb-in {
+  fill: var(--pipe-cool);
+}
+
+.air-flow-head-absorb-out {
+  fill: var(--pipe-cold);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .air-flow-arrow {
+    visibility: hidden;
+  }
+
+  .air-flow-motion {
+    visibility: visible;
+  }
+}
+
 .air-flow-grad-warm {
   stop-color: var(--pipe-warm);
   stop-opacity: 0;

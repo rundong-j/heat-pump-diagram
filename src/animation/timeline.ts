@@ -14,11 +14,15 @@ const HIGH_DASH_LENGTH = 8;
 const HIGH_DASH_GAP = 6;
 const HIGH_DASH_CYCLE = HIGH_DASH_LENGTH + HIGH_DASH_GAP;
 const DASH_SPEED_VS_PARTICLES = 0.5;
+const AIR_FLOW_HEAD_LENGTH = 24;
+const AIR_FLOW_HEAD_WIDTH = 42;
+const AIR_FLOW_KINDS = ["reject", "absorb"] as const;
 
 export class SceneAnimation {
   private mm: ReturnType<typeof gsap.matchMedia> | null = null;
   private flow: gsap.core.Timeline | null = null;
   private dashes: gsap.core.Timeline | null = null;
+  private airFlow: gsap.core.Timeline | null = null;
   private machines: gsap.core.Timeline | null = null;
   private svg: SVGSVGElement | null = null;
   private topology: string | null = null;
@@ -32,10 +36,12 @@ export class SceneAnimation {
     this.mm.add("(prefers-reduced-motion: reduce)", () => {
       this.flow = null;
       this.dashes = null;
+      this.airFlow = null;
       this.machines = null;
       gsap.set(svg.querySelector("[data-role='particles']"), { autoAlpha: 0 });
       gsap.set(svg.querySelector("[data-role='static-arrows']"), { autoAlpha: 1 });
       applyDashOffset(svg, 0);
+      layoutAirFlow(svg, 0);
       return () => undefined;
     });
 
@@ -44,14 +50,17 @@ export class SceneAnimation {
       this.machines = buildMachineTimeline(svg);
       this.flow = buildFlowTimeline(svg, config.mode === "heating");
       this.dashes = buildDashTimeline(svg);
+      this.airFlow = buildAirFlowTimeline(svg);
       this.applyPlayback(config.playback);
       return () => {
         this.machines?.kill();
         this.flow?.kill();
         this.dashes?.kill();
+        this.airFlow?.kill();
         this.machines = null;
         this.flow = null;
         this.dashes = null;
+        this.airFlow = null;
       };
     });
   }
@@ -93,6 +102,7 @@ export class SceneAnimation {
       this.applyPlayback(config.playback);
     }
     applyDashOffset(this.svg, (this.dashes?.progress() ?? 0) * DASH_CYCLE);
+    layoutAirFlow(this.svg, this.airFlow?.progress() ?? 0);
   }
 
   private rebuildFlow(config: DiagramConfig): void {
@@ -100,22 +110,35 @@ export class SceneAnimation {
       return;
     }
 
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      applyDashOffset(this.svg, 0);
+      layoutAirFlow(this.svg, 0);
+      return;
+    }
+
     const progress = this.flow?.progress() ?? 0;
     const dashProgress = this.dashes?.progress() ?? 0;
+    const airProgress = this.airFlow?.progress() ?? 0;
     const wasPlaying = config.playback.playing;
     this.flow?.kill();
     this.dashes?.kill();
+    this.airFlow?.kill();
     this.flow = buildFlowTimeline(this.svg, config.mode === "heating");
     this.dashes = buildDashTimeline(this.svg);
+    this.airFlow = buildAirFlowTimeline(this.svg);
     this.flow.progress(progress);
     this.dashes.progress(dashProgress);
+    this.airFlow.progress(airProgress);
     this.applyPlayback({ ...config.playback, playing: wasPlaying });
   }
 
   applyPlayback(playback: PlaybackState): void {
+    const heatOn = this.svg?.dataset.heatTransfer === "on";
     for (const tl of this.timelines()) {
       tl.timeScale(playback.speed);
-      if (playback.playing) {
+      const run =
+        playback.playing && (tl !== this.airFlow || heatOn);
+      if (run) {
         tl.play();
       } else {
         tl.pause();
@@ -128,6 +151,7 @@ export class SceneAnimation {
     this.mm = null;
     this.flow = null;
     this.dashes = null;
+    this.airFlow = null;
     this.machines = null;
     this.svg = null;
     this.topology = null;
@@ -143,7 +167,7 @@ export class SceneAnimation {
   }
 
   private timelines(): gsap.core.Timeline[] {
-    return [this.flow, this.dashes, this.machines].filter(
+    return [this.flow, this.dashes, this.airFlow, this.machines].filter(
       (tl): tl is gsap.core.Timeline => tl !== null,
     );
   }
@@ -256,6 +280,258 @@ function applyDashOffset(svg: SVGSVGElement, offset: number): void {
     pipe.setAttribute("stroke-dashoffset", String(-offset));
   });
   layoutDashArrows(svg, offset);
+}
+
+function dartWindow(fullLen: number): number {
+  return Math.max(2 * AIR_FLOW_HEAD_LENGTH, 0.5 * fullLen);
+}
+
+function coilAirTrack(
+  svg: SVGSVGElement,
+  kind: (typeof AIR_FLOW_KINDS)[number],
+): { inLen: number; outLen: number; gap: number; track: number } | null {
+  const inStem = svg.querySelector<SVGPathElement>(
+    `.air-flow-stem-${kind}-in`,
+  );
+  const outStem = svg.querySelector<SVGPathElement>(
+    `.air-flow-stem-${kind}-out`,
+  );
+  const groupName =
+    kind === "reject" ? "air-flow-condenser" : "air-flow-evaporator";
+  const group = svg.querySelector(`.${groupName}`);
+  if (!inStem || !outStem) {
+    return null;
+  }
+  const inLen = inStem.getTotalLength();
+  const outLen = outStem.getTotalLength();
+  const gap = Number(group?.getAttribute("data-air-gap"));
+  if (inLen < 2 || outLen < 2 || !Number.isFinite(gap) || gap < 0) {
+    return null;
+  }
+  return { inLen, outLen, gap, track: inLen + gap + outLen };
+}
+
+function airFlowCycleSeconds(svg: SVGSVGElement): number {
+  const metrics = coilAirTrack(svg, "reject");
+  const loop = svg.querySelector<SVGPathElement>("#refrigerant-loop");
+  const loopLength = loop?.getTotalLength() ?? 0;
+  if (!metrics || metrics.track <= 0 || loopLength <= 0) {
+    return LOOP_SECONDS;
+  }
+  const travel = metrics.track + dartWindow(metrics.track);
+  return (travel * LOOP_SECONDS) / (loopLength * DASH_SPEED_VS_PARTICLES);
+}
+
+function layoutAirFlow(svg: SVGSVGElement, progress: number): void {
+  const p = ((progress % 1) + 1) % 1;
+
+  for (const kind of AIR_FLOW_KINDS) {
+    const metrics = coilAirTrack(svg, kind);
+    const inStem = svg.querySelector<SVGPathElement>(
+      `.air-flow-stem-${kind}-in`,
+    );
+    const outStem = svg.querySelector<SVGPathElement>(
+      `.air-flow-stem-${kind}-out`,
+    );
+    const inHead = svg.querySelector<SVGPolygonElement>(
+      `.air-flow-head-${kind}-in`,
+    );
+    const outHead = svg.querySelector<SVGPolygonElement>(
+      `.air-flow-head-${kind}-out`,
+    );
+    if (!metrics || !inStem || !outStem || !inHead || !outHead) {
+      continue;
+    }
+
+    const windowLen = dartWindow(metrics.track);
+    const dashStart = p * (metrics.track + windowLen) - windowLen;
+    const dashEnd = dashStart + windowLen;
+    const outShift = metrics.inLen + metrics.gap;
+
+    layoutDart(inStem, inHead, dashStart, dashEnd);
+    layoutDart(
+      outStem,
+      outHead,
+      dashStart - outShift,
+      dashEnd - outShift,
+    );
+  }
+}
+
+function pointOnTrack(
+  stem: SVGPathElement,
+  s: number,
+  pathLen: number,
+): { x: number; y: number } {
+  if (s <= 0) {
+    const start = stem.getPointAtLength(0);
+    const next = stem.getPointAtLength(Math.min(pathLen, 2));
+    const tx = next.x - start.x;
+    const ty = next.y - start.y;
+    const len = Math.hypot(tx, ty) || 1;
+    return { x: start.x + (tx / len) * s, y: start.y + (ty / len) * s };
+  }
+  if (s >= pathLen) {
+    const end = stem.getPointAtLength(pathLen);
+    const prev = stem.getPointAtLength(Math.max(0, pathLen - 2));
+    const tx = end.x - prev.x;
+    const ty = end.y - prev.y;
+    const len = Math.hypot(tx, ty) || 1;
+    const extra = s - pathLen;
+    return { x: end.x + (tx / len) * extra, y: end.y + (ty / len) * extra };
+  }
+  return stem.getPointAtLength(s);
+}
+
+function pathEndNormal(
+  stem: SVGPathElement,
+  pathLen: number,
+  atStart: boolean,
+): { x: number; y: number; nx: number; ny: number } {
+  if (atStart) {
+    const origin = stem.getPointAtLength(0);
+    const next = stem.getPointAtLength(Math.min(pathLen, 2));
+    const tx = next.x - origin.x;
+    const ty = next.y - origin.y;
+    const len = Math.hypot(tx, ty) || 1;
+    return { x: origin.x, y: origin.y, nx: tx / len, ny: ty / len };
+  }
+  const origin = stem.getPointAtLength(pathLen);
+  const prev = stem.getPointAtLength(Math.max(0, pathLen - 2));
+  const tx = origin.x - prev.x;
+  const ty = origin.y - prev.y;
+  const len = Math.hypot(tx, ty) || 1;
+  return { x: origin.x, y: origin.y, nx: -tx / len, ny: -ty / len };
+}
+
+function clipPolyToHalfPlane(
+  pts: Array<{ x: number; y: number }>,
+  origin: { x: number; y: number },
+  nx: number,
+  ny: number,
+): Array<{ x: number; y: number }> {
+  const inside = (p: { x: number; y: number }) =>
+    (p.x - origin.x) * nx + (p.y - origin.y) * ny >= -0.05;
+  const out: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < pts.length; i += 1) {
+    const a = pts[i];
+    const b = pts[(i + 1) % pts.length];
+    const ia = inside(a);
+    const ib = inside(b);
+    if (ia) {
+      out.push(a);
+    }
+    if (ia !== ib) {
+      const da = (a.x - origin.x) * nx + (a.y - origin.y) * ny;
+      const db = (b.x - origin.x) * nx + (b.y - origin.y) * ny;
+      const t = da / (da - db);
+      out.push({
+        x: a.x + (b.x - a.x) * t,
+        y: a.y + (b.y - a.y) * t,
+      });
+    }
+  }
+  return out;
+}
+
+function layoutDart(
+  stem: SVGPathElement,
+  head: SVGPolygonElement,
+  dashStart: number,
+  dashEnd: number,
+): void {
+  const pathLen = stem.getTotalLength();
+  if (pathLen < 2) {
+    stem.setAttribute("stroke-dasharray", "0 1");
+    head.setAttribute("visibility", "hidden");
+    head.removeAttribute("clip-path");
+    head.removeAttribute("transform");
+    return;
+  }
+
+  const visStart = Math.max(0, Math.min(pathLen, dashStart));
+  const visEnd = Math.max(0, Math.min(pathLen, dashEnd));
+  const headBase = dashEnd - AIR_FLOW_HEAD_LENGTH;
+  const overlapsPath = dashEnd > 0 && dashStart < pathLen;
+  const showHead =
+    overlapsPath &&
+    dashEnd > 0.5 &&
+    dashEnd < pathLen + AIR_FLOW_HEAD_LENGTH;
+
+  const stemEnd =
+    showHead && headBase < pathLen
+      ? Math.max(visStart, Math.min(visEnd, headBase + 1))
+      : visEnd;
+  const visLen = Math.max(0, stemEnd - visStart);
+
+  stem.setAttribute("stroke-dasharray", `${visLen} ${pathLen}`);
+  stem.setAttribute("stroke-dashoffset", String(-visStart));
+  stem.removeAttribute("opacity");
+
+  if (!showHead) {
+    head.setAttribute("visibility", "hidden");
+    head.removeAttribute("clip-path");
+    head.removeAttribute("transform");
+    head.removeAttribute("opacity");
+    return;
+  }
+
+  const basePt = pointOnTrack(stem, headBase, pathLen);
+  const tipPt = pointOnTrack(stem, Math.max(headBase + 1, dashEnd), pathLen);
+  const dx = tipPt.x - basePt.x;
+  const dy = tipPt.y - basePt.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const px = -dy / len;
+  const py = dx / len;
+  const half = AIR_FLOW_HEAD_WIDTH / 2;
+  let pts = [
+    { x: basePt.x + px * half, y: basePt.y + py * half },
+    { x: tipPt.x, y: tipPt.y },
+    { x: basePt.x - px * half, y: basePt.y - py * half },
+  ];
+  if (headBase < 0) {
+    const start = pathEndNormal(stem, pathLen, true);
+    pts = clipPolyToHalfPlane(pts, start, start.nx, start.ny);
+  }
+  if (dashEnd > pathLen) {
+    const end = pathEndNormal(stem, pathLen, false);
+    pts = clipPolyToHalfPlane(pts, end, end.nx, end.ny);
+  }
+  if (pts.length < 3) {
+    head.setAttribute("visibility", "hidden");
+    head.removeAttribute("clip-path");
+    return;
+  }
+  head.setAttribute(
+    "points",
+    pts.map((p) => `${p.x},${p.y}`).join(" "),
+  );
+  head.removeAttribute("clip-path");
+  head.removeAttribute("transform");
+  head.removeAttribute("opacity");
+  head.setAttribute("visibility", "visible");
+}
+
+function buildAirFlowTimeline(svg: SVGSVGElement): gsap.core.Timeline {
+  const state = { progress: 0 };
+  const tl = gsap.timeline({
+    paused: true,
+    repeat: -1,
+  });
+
+  layoutAirFlow(svg, 0);
+  tl.to(
+    state,
+    {
+      progress: 1,
+      duration: airFlowCycleSeconds(svg),
+      ease: "none",
+      onUpdate: () => layoutAirFlow(svg, state.progress),
+    },
+    0,
+  );
+
+  return tl;
 }
 
 function buildDashTimeline(svg: SVGSVGElement): gsap.core.Timeline {

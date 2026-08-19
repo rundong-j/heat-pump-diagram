@@ -16,7 +16,7 @@ Thermodynamic values are illustrative teaching aids, not a refrigerant property 
 - Light/dark theme, XL default font, indoor unit left or right
 - Optional house outline with outdoor weather and warm/cool zone fills
 - Overlays for labels, direction, pressure, temperature, and phase
-- Heat transfer overlay (on by default): Heat absorbed / Heat rejected labels plus condenser (down, warm→hot) and evaporator (up, cool→cold) air-flow arrows; the simple-box loop insets to leave room for them
+- Heat transfer overlay (on by default): Heat absorbed / Heat rejected labels plus condenser (down) and evaporator (up) air-flow arrows — a warm/cool dart into each coil box and a hot/cold dart out the other side; the simple-box loop insets to leave room for them
 - Play/pause, playback speed, and 4K JPEG screenshot (save dialog)
 
 ## Local development

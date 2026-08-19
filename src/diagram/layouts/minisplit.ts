@@ -354,8 +354,8 @@ type AirFlowKind = "reject" | "absorb";
 /**
  * Uniform circular ring-section arrow on the outside of the refrigerant loop.
  * Left coil: 1/3 mark, bulge right `)` . Right coil: 2/3 mark, bulge left `(` .
- * Reject (condenser) points down with warm→hot. Absorb (evaporator) points up
- * with cool→cold. Ends sit outward.
+ * Reject (condenser) points down: solid warm dart into the box, solid hot dart out.
+ * Absorb (evaporator) points up: solid cool dart into the box, solid cold dart out.
  */
 function coilAirFlow(opts: {
   coil: Point;
@@ -416,6 +416,59 @@ function coilAirFlow(opts: {
     "Z",
   ].join(" ");
 
+  const boxTop = SIMPLE_BOX_COIL_Y - SIMPLE_BOX_HEIGHT / 2;
+  const boxBot = SIMPLE_BOX_COIL_Y + SIMPLE_BOX_HEIGHT / 2;
+
+  function thetaAtY(targetY: number): number {
+    let lo = 0;
+    let hi = 1;
+    for (let i = 0; i < 28; i += 1) {
+      const mid = (lo + hi) / 2;
+      const theta = thetaStart + mid * (thetaTip - thetaStart);
+      const y = polar(radius, theta).y;
+      if (goingDown ? y < targetY : y > targetY) {
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+    return thetaStart + ((lo + hi) / 2) * (thetaTip - thetaStart);
+  }
+
+  function centerlineBetween(t0: number, t1: number): string {
+    const a = polar(radius, t0);
+    const b = polar(radius, t1);
+    return [
+      `M${a.x.toFixed(2)},${a.y.toFixed(2)}`,
+      `A${radius.toFixed(2)} ${radius.toFixed(2)} 0 0 ${outerSweep} ${b.x.toFixed(2)},${b.y.toFixed(2)}`,
+    ].join(" ");
+  }
+
+  function shaftClipBetween(t0: number, t1: number): string {
+    const outer0 = polar(radius + hs, t0);
+    const inner0 = polar(radius - hs, t0);
+    const outer1 = polar(radius + hs, t1);
+    const inner1 = polar(radius - hs, t1);
+    return [
+      `M${outer0.x.toFixed(2)},${outer0.y.toFixed(2)}`,
+      `A${(radius + hs).toFixed(2)} ${(radius + hs).toFixed(2)} 0 0 ${outerSweep} ${outer1.x.toFixed(2)},${outer1.y.toFixed(2)}`,
+      `L${inner1.x.toFixed(2)},${inner1.y.toFixed(2)}`,
+      `A${(radius - hs).toFixed(2)} ${(radius - hs).toFixed(2)} 0 0 ${innerSweep} ${inner0.x.toFixed(2)},${inner0.y.toFixed(2)}`,
+      "Z",
+    ].join(" ");
+  }
+
+  const thetaInEnd = thetaAtY(goingDown ? boxTop : boxBot);
+  const thetaOutStart = thetaAtY(goingDown ? boxBot : boxTop);
+  const inboundPath = centerlineBetween(thetaStart, thetaInEnd);
+  const outboundPath = centerlineBetween(thetaOutStart, thetaTip);
+  const inboundClip = shaftClipBetween(thetaStart, thetaInEnd);
+  const outboundClip = shaftClipBetween(thetaOutStart, thetaTip);
+  const inboundY0 = polar(radius, thetaStart).y;
+  const inboundY1 = polar(radius, thetaInEnd).y;
+  const outboundY0 = polar(radius, thetaOutStart).y;
+  const outboundY1 = polar(radius, thetaTip).y;
+
   const gradientId =
     kind === "reject"
       ? "air-flow-condenser-gradient"
@@ -429,13 +482,125 @@ function coilAirFlow(opts: {
   const yTail = pointUp ? loopBot : loopTop;
   const yTipGrad = pointUp ? loopTop : loopBot;
 
-  return m(`g.${groupKey}`, { key: groupKey }, [
-    m(
-      "defs",
-      { key: `${groupKey}-defs` },
+  function fadeMask(
+    maskId: string,
+    y0: number,
+    y1: number,
+    mode: "in" | "out",
+  ): m.Vnode[] {
+    const gradId = `${maskId}-grad`;
+    const fadeIn = mode === "in";
+    return [
       m(
         "linearGradient",
         {
+          key: `${maskId}-grad`,
+          id: gradId,
+          gradientUnits: "userSpaceOnUse",
+          x1: "0",
+          y1: String(y0),
+          x2: "0",
+          y2: String(y1),
+        },
+        fadeIn
+          ? [
+              m("stop", {
+                offset: "0%",
+                "stop-color": "#fff",
+                "stop-opacity": "0",
+              }),
+              m("stop", {
+                offset: "22%",
+                "stop-color": "#fff",
+                "stop-opacity": "1",
+              }),
+              m("stop", {
+                offset: "100%",
+                "stop-color": "#fff",
+                "stop-opacity": "1",
+              }),
+            ]
+          : [
+              m("stop", {
+                offset: "0%",
+                "stop-color": "#fff",
+                "stop-opacity": "1",
+              }),
+              m("stop", {
+                offset: "78%",
+                "stop-color": "#fff",
+                "stop-opacity": "1",
+              }),
+              m("stop", {
+                offset: "100%",
+                "stop-color": "#fff",
+                "stop-opacity": "0",
+              }),
+            ],
+      ),
+      m(
+        "mask",
+        {
+          key: maskId,
+          id: maskId,
+          maskUnits: "userSpaceOnUse",
+          maskContentUnits: "userSpaceOnUse",
+        },
+        m("rect", {
+          x: 0,
+          y: 0,
+          width: VIEWPORT_WIDTH,
+          height: VIEWPORT_HEIGHT,
+          fill: `url(#${gradId})`,
+        }),
+      ),
+    ];
+  }
+
+  function dartGroup(
+    part: "in" | "out",
+    pathD: string,
+    maskId: string,
+  ): m.Vnode {
+    const partClipId = `air-flow-clip-${kind}-${part}`;
+    return m(
+      `g.air-flow-motion.air-flow-motion-${kind}-${part}`,
+      {
+        key: `${groupKey}-motion-${part}`,
+        mask: `url(#${maskId})`,
+      },
+      [
+        m(
+          `g.air-flow-stem-clip.air-flow-stem-clip-${kind}-${part}`,
+          {
+            key: `${groupKey}-stem-clip-${part}`,
+            "clip-path": `url(#${partClipId})`,
+          },
+          m(`path.air-flow-stem.air-flow-stem-${kind}-${part}`, {
+            key: `${groupKey}-stem-${part}`,
+            d: pathD,
+            fill: "none",
+          }),
+        ),
+        m(`polygon.air-flow-head.air-flow-head-${kind}-${part}`, {
+          key: `${groupKey}-head-${part}`,
+          points: "0,0 0,0 0,0",
+          visibility: "hidden",
+        }),
+      ],
+    );
+  }
+
+  const inboundMaskId = `air-flow-mask-${kind}-in`;
+  const outboundMaskId = `air-flow-mask-${kind}-out`;
+  const gapLen = radius * Math.abs(thetaOutStart - thetaInEnd);
+
+  return m(`g.${groupKey}`, { key: groupKey, "data-air-gap": String(gapLen) }, [
+    m("defs", { key: `${groupKey}-defs` }, [
+      m(
+        "linearGradient",
+        {
+          key: `${groupKey}-grad`,
           id: gradientId,
           gradientUnits: "userSpaceOnUse",
           x1: String(xMid),
@@ -454,11 +619,33 @@ function coilAirFlow(opts: {
           }),
         ],
       ),
-    ),
+      ...fadeMask(inboundMaskId, inboundY0, inboundY1, "in"),
+      ...fadeMask(outboundMaskId, outboundY0, outboundY1, "out"),
+      m(
+        "clipPath",
+        {
+          key: `${groupKey}-clip-in`,
+          id: `air-flow-clip-${kind}-in`,
+          clipPathUnits: "userSpaceOnUse",
+        },
+        m("path", { key: `${groupKey}-clip-path-in`, d: inboundClip }),
+      ),
+      m(
+        "clipPath",
+        {
+          key: `${groupKey}-clip-out`,
+          id: `air-flow-clip-${kind}-out`,
+          clipPathUnits: "userSpaceOnUse",
+        },
+        m("path", { key: `${groupKey}-clip-path-out`, d: outboundClip }),
+      ),
+    ]),
     m(`path.air-flow-arrow.air-flow-arrow-${kind}`, {
       key: `${groupKey}-arrow`,
       d,
     }),
+    dartGroup("in", inboundPath, inboundMaskId),
+    dartGroup("out", outboundPath, outboundMaskId),
   ]);
 }
 
