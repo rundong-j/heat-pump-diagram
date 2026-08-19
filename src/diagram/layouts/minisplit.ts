@@ -618,7 +618,7 @@ function houseContext(flip: boolean): m.Children {
     },
     [
       m("path.house-body", {
-        d: "M48,188 H412 V468 H48 Z",
+        d: "M48,188 H412 V492 H48 Z",
       }),
       m("path.house-roof", {
         d: "M36,188 L230,78 L424,188 Z",
@@ -978,7 +978,7 @@ export function minisplitScene(config: DiagramConfig): m.Children {
       label(
         heatFlowLabel(indoorRole),
         placeX(195),
-        455,
+        475,
         placeAnchor("middle"),
         undefined,
         "heat-indoor",

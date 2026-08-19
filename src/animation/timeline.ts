@@ -14,6 +14,7 @@ const HIGH_DASH_LENGTH = 8;
 const HIGH_DASH_GAP = 6;
 const HIGH_DASH_CYCLE = HIGH_DASH_LENGTH + HIGH_DASH_GAP;
 const DASH_SPEED_VS_PARTICLES = 0.5;
+const AIR_FLOW_SPEED_VS_PARTICLES = 1;
 const AIR_FLOW_HEAD_LENGTH = 24;
 const AIR_FLOW_HEAD_WIDTH = 42;
 const AIR_FLOW_KINDS = ["reject", "absorb"] as const;
@@ -283,7 +284,7 @@ function applyDashOffset(svg: SVGSVGElement, offset: number): void {
 }
 
 function dartWindow(fullLen: number): number {
-  return Math.max(2 * AIR_FLOW_HEAD_LENGTH, 0.5 * fullLen);
+  return Math.max(2 * AIR_FLOW_HEAD_LENGTH, fullLen);
 }
 
 type CoilAirEls = {
@@ -343,7 +344,7 @@ function airFlowCycleSeconds(svg: SVGSVGElement): number {
     return LOOP_SECONDS;
   }
   const travel = coil.track + dartWindow(coil.track);
-  return (travel * LOOP_SECONDS) / (loopLength * DASH_SPEED_VS_PARTICLES);
+  return (travel * LOOP_SECONDS) / (loopLength * AIR_FLOW_SPEED_VS_PARTICLES);
 }
 
 function layoutAirFlow(svg: SVGSVGElement, progress: number): void {
