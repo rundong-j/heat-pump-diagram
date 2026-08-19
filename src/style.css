@@ -460,45 +460,31 @@ body {
 
 .air-flow-stem {
   fill: none;
+  stroke: var(--air-flow-color);
   stroke-width: 26;
   stroke-linecap: butt;
   stroke-linejoin: round;
 }
 
-.air-flow-stem-reject-in {
-  stroke: var(--pipe-warm);
-}
-
-.air-flow-stem-reject-out {
-  stroke: var(--pipe-hot);
-}
-
-.air-flow-stem-absorb-in {
-  stroke: var(--pipe-cool);
-}
-
-.air-flow-stem-absorb-out {
-  stroke: var(--pipe-cold);
-}
-
 .air-flow-head {
   stroke: none;
+  fill: var(--air-flow-color);
 }
 
-.air-flow-head-reject-in {
-  fill: var(--pipe-warm);
+.air-flow-motion-reject-in {
+  --air-flow-color: var(--pipe-warm);
 }
 
-.air-flow-head-reject-out {
-  fill: var(--pipe-hot);
+.air-flow-motion-reject-out {
+  --air-flow-color: var(--pipe-hot);
 }
 
-.air-flow-head-absorb-in {
-  fill: var(--pipe-cool);
+.air-flow-motion-absorb-in {
+  --air-flow-color: var(--pipe-cool);
 }
 
-.air-flow-head-absorb-out {
-  fill: var(--pipe-cold);
+.air-flow-motion-absorb-out {
+  --air-flow-color: var(--pipe-cold);
 }
 
 @media (prefers-reduced-motion: no-preference) {

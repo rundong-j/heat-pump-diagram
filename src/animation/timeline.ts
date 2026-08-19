@@ -286,20 +286,36 @@ function dartWindow(fullLen: number): number {
   return Math.max(2 * AIR_FLOW_HEAD_LENGTH, 0.5 * fullLen);
 }
 
-function coilAirTrack(
+type CoilAirEls = {
+  inStem: SVGPathElement;
+  outStem: SVGPathElement;
+  inHead: SVGPolygonElement;
+  outHead: SVGPolygonElement;
+  inLen: number;
+  gap: number;
+  track: number;
+};
+
+function coilAirEls(
   svg: SVGSVGElement,
   kind: (typeof AIR_FLOW_KINDS)[number],
-): { inLen: number; outLen: number; gap: number; track: number } | null {
+): CoilAirEls | null {
   const inStem = svg.querySelector<SVGPathElement>(
     `.air-flow-stem-${kind}-in`,
   );
   const outStem = svg.querySelector<SVGPathElement>(
     `.air-flow-stem-${kind}-out`,
   );
+  const inHead = svg.querySelector<SVGPolygonElement>(
+    `.air-flow-head-${kind}-in`,
+  );
+  const outHead = svg.querySelector<SVGPolygonElement>(
+    `.air-flow-head-${kind}-out`,
+  );
   const groupName =
     kind === "reject" ? "air-flow-condenser" : "air-flow-evaporator";
   const group = svg.querySelector(`.${groupName}`);
-  if (!inStem || !outStem) {
+  if (!inStem || !outStem || !inHead || !outHead) {
     return null;
   }
   const inLen = inStem.getTotalLength();
@@ -308,17 +324,25 @@ function coilAirTrack(
   if (inLen < 2 || outLen < 2 || !Number.isFinite(gap) || gap < 0) {
     return null;
   }
-  return { inLen, outLen, gap, track: inLen + gap + outLen };
+  return {
+    inStem,
+    outStem,
+    inHead,
+    outHead,
+    inLen,
+    gap,
+    track: inLen + gap + outLen,
+  };
 }
 
 function airFlowCycleSeconds(svg: SVGSVGElement): number {
-  const metrics = coilAirTrack(svg, "reject");
+  const coil = coilAirEls(svg, "reject");
   const loop = svg.querySelector<SVGPathElement>("#refrigerant-loop");
   const loopLength = loop?.getTotalLength() ?? 0;
-  if (!metrics || metrics.track <= 0 || loopLength <= 0) {
+  if (!coil || coil.track <= 0 || loopLength <= 0) {
     return LOOP_SECONDS;
   }
-  const travel = metrics.track + dartWindow(metrics.track);
+  const travel = coil.track + dartWindow(coil.track);
   return (travel * LOOP_SECONDS) / (loopLength * DASH_SPEED_VS_PARTICLES);
 }
 
@@ -326,36 +350,39 @@ function layoutAirFlow(svg: SVGSVGElement, progress: number): void {
   const p = ((progress % 1) + 1) % 1;
 
   for (const kind of AIR_FLOW_KINDS) {
-    const metrics = coilAirTrack(svg, kind);
-    const inStem = svg.querySelector<SVGPathElement>(
-      `.air-flow-stem-${kind}-in`,
-    );
-    const outStem = svg.querySelector<SVGPathElement>(
-      `.air-flow-stem-${kind}-out`,
-    );
-    const inHead = svg.querySelector<SVGPolygonElement>(
-      `.air-flow-head-${kind}-in`,
-    );
-    const outHead = svg.querySelector<SVGPolygonElement>(
-      `.air-flow-head-${kind}-out`,
-    );
-    if (!metrics || !inStem || !outStem || !inHead || !outHead) {
+    const coil = coilAirEls(svg, kind);
+    if (!coil) {
       continue;
     }
 
-    const windowLen = dartWindow(metrics.track);
-    const dashStart = p * (metrics.track + windowLen) - windowLen;
+    const windowLen = dartWindow(coil.track);
+    const dashStart = p * (coil.track + windowLen) - windowLen;
     const dashEnd = dashStart + windowLen;
-    const outShift = metrics.inLen + metrics.gap;
+    const outShift = coil.inLen + coil.gap;
 
-    layoutDart(inStem, inHead, dashStart, dashEnd);
+    layoutDart(coil.inStem, coil.inHead, dashStart, dashEnd);
     layoutDart(
-      outStem,
-      outHead,
+      coil.outStem,
+      coil.outHead,
       dashStart - outShift,
       dashEnd - outShift,
     );
   }
+}
+
+function stemTangent(
+  stem: SVGPathElement,
+  pathLen: number,
+  atStart: boolean,
+): { x: number; y: number; tx: number; ty: number } {
+  const origin = stem.getPointAtLength(atStart ? 0 : pathLen);
+  const other = stem.getPointAtLength(
+    atStart ? Math.min(pathLen, 2) : Math.max(0, pathLen - 2),
+  );
+  const tx = atStart ? other.x - origin.x : origin.x - other.x;
+  const ty = atStart ? other.y - origin.y : origin.y - other.y;
+  const len = Math.hypot(tx, ty) || 1;
+  return { x: origin.x, y: origin.y, tx: tx / len, ty: ty / len };
 }
 
 function pointOnTrack(
@@ -363,45 +390,12 @@ function pointOnTrack(
   s: number,
   pathLen: number,
 ): { x: number; y: number } {
-  if (s <= 0) {
-    const start = stem.getPointAtLength(0);
-    const next = stem.getPointAtLength(Math.min(pathLen, 2));
-    const tx = next.x - start.x;
-    const ty = next.y - start.y;
-    const len = Math.hypot(tx, ty) || 1;
-    return { x: start.x + (tx / len) * s, y: start.y + (ty / len) * s };
+  if (s > 0 && s < pathLen) {
+    return stem.getPointAtLength(s);
   }
-  if (s >= pathLen) {
-    const end = stem.getPointAtLength(pathLen);
-    const prev = stem.getPointAtLength(Math.max(0, pathLen - 2));
-    const tx = end.x - prev.x;
-    const ty = end.y - prev.y;
-    const len = Math.hypot(tx, ty) || 1;
-    const extra = s - pathLen;
-    return { x: end.x + (tx / len) * extra, y: end.y + (ty / len) * extra };
-  }
-  return stem.getPointAtLength(s);
-}
-
-function pathEndNormal(
-  stem: SVGPathElement,
-  pathLen: number,
-  atStart: boolean,
-): { x: number; y: number; nx: number; ny: number } {
-  if (atStart) {
-    const origin = stem.getPointAtLength(0);
-    const next = stem.getPointAtLength(Math.min(pathLen, 2));
-    const tx = next.x - origin.x;
-    const ty = next.y - origin.y;
-    const len = Math.hypot(tx, ty) || 1;
-    return { x: origin.x, y: origin.y, nx: tx / len, ny: ty / len };
-  }
-  const origin = stem.getPointAtLength(pathLen);
-  const prev = stem.getPointAtLength(Math.max(0, pathLen - 2));
-  const tx = origin.x - prev.x;
-  const ty = origin.y - prev.y;
-  const len = Math.hypot(tx, ty) || 1;
-  return { x: origin.x, y: origin.y, nx: -tx / len, ny: -ty / len };
+  const t = stemTangent(stem, pathLen, s <= 0);
+  const along = s <= 0 ? s : s - pathLen;
+  return { x: t.x + t.tx * along, y: t.y + t.ty * along };
 }
 
 function clipPolyToHalfPlane(
@@ -444,8 +438,6 @@ function layoutDart(
   if (pathLen < 2) {
     stem.setAttribute("stroke-dasharray", "0 1");
     head.setAttribute("visibility", "hidden");
-    head.removeAttribute("clip-path");
-    head.removeAttribute("transform");
     return;
   }
 
@@ -466,13 +458,9 @@ function layoutDart(
 
   stem.setAttribute("stroke-dasharray", `${visLen} ${pathLen}`);
   stem.setAttribute("stroke-dashoffset", String(-visStart));
-  stem.removeAttribute("opacity");
 
   if (!showHead) {
     head.setAttribute("visibility", "hidden");
-    head.removeAttribute("clip-path");
-    head.removeAttribute("transform");
-    head.removeAttribute("opacity");
     return;
   }
 
@@ -490,25 +478,21 @@ function layoutDart(
     { x: basePt.x - px * half, y: basePt.y - py * half },
   ];
   if (headBase < 0) {
-    const start = pathEndNormal(stem, pathLen, true);
-    pts = clipPolyToHalfPlane(pts, start, start.nx, start.ny);
+    const start = stemTangent(stem, pathLen, true);
+    pts = clipPolyToHalfPlane(pts, start, start.tx, start.ty);
   }
   if (dashEnd > pathLen) {
-    const end = pathEndNormal(stem, pathLen, false);
-    pts = clipPolyToHalfPlane(pts, end, end.nx, end.ny);
+    const end = stemTangent(stem, pathLen, false);
+    pts = clipPolyToHalfPlane(pts, end, -end.tx, -end.ty);
   }
   if (pts.length < 3) {
     head.setAttribute("visibility", "hidden");
-    head.removeAttribute("clip-path");
     return;
   }
   head.setAttribute(
     "points",
     pts.map((p) => `${p.x},${p.y}`).join(" "),
   );
-  head.removeAttribute("clip-path");
-  head.removeAttribute("transform");
-  head.removeAttribute("opacity");
   head.setAttribute("visibility", "visible");
 }
 

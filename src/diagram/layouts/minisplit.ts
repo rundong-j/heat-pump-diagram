@@ -351,6 +351,61 @@ function roundCoord(n: number): number {
 
 type AirFlowKind = "reject" | "absorb";
 
+function airFlowFadeDefs(): m.Vnode {
+  return m("defs", { key: "air-flow-shared-defs" }, [
+    m(
+      "linearGradient",
+      {
+        key: "air-flow-fade-grad",
+        id: "air-flow-fade-grad",
+        gradientUnits: "userSpaceOnUse",
+        x1: "0",
+        y1: String(SIMPLE_BOX_LOOP_TOP),
+        x2: "0",
+        y2: String(SIMPLE_BOX_LOOP_BOTTOM),
+      },
+      [
+        m("stop", {
+          offset: "0%",
+          "stop-color": "#fff",
+          "stop-opacity": "0",
+        }),
+        m("stop", {
+          offset: "16%",
+          "stop-color": "#fff",
+          "stop-opacity": "1",
+        }),
+        m("stop", {
+          offset: "84%",
+          "stop-color": "#fff",
+          "stop-opacity": "1",
+        }),
+        m("stop", {
+          offset: "100%",
+          "stop-color": "#fff",
+          "stop-opacity": "0",
+        }),
+      ],
+    ),
+    m(
+      "mask",
+      {
+        key: "air-flow-fade-mask",
+        id: "air-flow-fade-mask",
+        maskUnits: "userSpaceOnUse",
+        maskContentUnits: "userSpaceOnUse",
+      },
+      m("rect", {
+        x: 0,
+        y: 0,
+        width: VIEWPORT_WIDTH,
+        height: VIEWPORT_HEIGHT,
+        fill: "url(#air-flow-fade-grad)",
+      }),
+    ),
+  ]);
+}
+
 /**
  * Uniform circular ring-section arrow on the outside of the refrigerant loop.
  * Left coil: 1/3 mark, bulge right `)` . Right coil: 2/3 mark, bulge left `(` .
@@ -420,19 +475,9 @@ function coilAirFlow(opts: {
   const boxBot = SIMPLE_BOX_COIL_Y + SIMPLE_BOX_HEIGHT / 2;
 
   function thetaAtY(targetY: number): number {
-    let lo = 0;
-    let hi = 1;
-    for (let i = 0; i < 28; i += 1) {
-      const mid = (lo + hi) / 2;
-      const theta = thetaStart + mid * (thetaTip - thetaStart);
-      const y = polar(radius, theta).y;
-      if (goingDown ? y < targetY : y > targetY) {
-        lo = mid;
-      } else {
-        hi = mid;
-      }
-    }
-    return thetaStart + ((lo + hi) / 2) * (thetaTip - thetaStart);
+    const ratio = Math.min(1, Math.max(-1, (targetY - cy) / radius));
+    const asinY = Math.asin(ratio);
+    return bulgeLeft ? Math.PI - asinY : asinY;
   }
 
   function centerlineBetween(t0: number, t1: number): string {
@@ -464,10 +509,6 @@ function coilAirFlow(opts: {
   const outboundPath = centerlineBetween(thetaOutStart, thetaTip);
   const inboundClip = shaftClipBetween(thetaStart, thetaInEnd);
   const outboundClip = shaftClipBetween(thetaOutStart, thetaTip);
-  const inboundY0 = polar(radius, thetaStart).y;
-  const inboundY1 = polar(radius, thetaInEnd).y;
-  const outboundY0 = polar(radius, thetaOutStart).y;
-  const outboundY1 = polar(radius, thetaTip).y;
 
   const gradientId =
     kind === "reject"
@@ -482,92 +523,13 @@ function coilAirFlow(opts: {
   const yTail = pointUp ? loopBot : loopTop;
   const yTipGrad = pointUp ? loopTop : loopBot;
 
-  function fadeMask(
-    maskId: string,
-    y0: number,
-    y1: number,
-    mode: "in" | "out",
-  ): m.Vnode[] {
-    const gradId = `${maskId}-grad`;
-    const fadeIn = mode === "in";
-    return [
-      m(
-        "linearGradient",
-        {
-          key: `${maskId}-grad`,
-          id: gradId,
-          gradientUnits: "userSpaceOnUse",
-          x1: "0",
-          y1: String(y0),
-          x2: "0",
-          y2: String(y1),
-        },
-        fadeIn
-          ? [
-              m("stop", {
-                offset: "0%",
-                "stop-color": "#fff",
-                "stop-opacity": "0",
-              }),
-              m("stop", {
-                offset: "22%",
-                "stop-color": "#fff",
-                "stop-opacity": "1",
-              }),
-              m("stop", {
-                offset: "100%",
-                "stop-color": "#fff",
-                "stop-opacity": "1",
-              }),
-            ]
-          : [
-              m("stop", {
-                offset: "0%",
-                "stop-color": "#fff",
-                "stop-opacity": "1",
-              }),
-              m("stop", {
-                offset: "78%",
-                "stop-color": "#fff",
-                "stop-opacity": "1",
-              }),
-              m("stop", {
-                offset: "100%",
-                "stop-color": "#fff",
-                "stop-opacity": "0",
-              }),
-            ],
-      ),
-      m(
-        "mask",
-        {
-          key: maskId,
-          id: maskId,
-          maskUnits: "userSpaceOnUse",
-          maskContentUnits: "userSpaceOnUse",
-        },
-        m("rect", {
-          x: 0,
-          y: 0,
-          width: VIEWPORT_WIDTH,
-          height: VIEWPORT_HEIGHT,
-          fill: `url(#${gradId})`,
-        }),
-      ),
-    ];
-  }
-
-  function dartGroup(
-    part: "in" | "out",
-    pathD: string,
-    maskId: string,
-  ): m.Vnode {
+  function dartGroup(part: "in" | "out", pathD: string): m.Vnode {
     const partClipId = `air-flow-clip-${kind}-${part}`;
     return m(
       `g.air-flow-motion.air-flow-motion-${kind}-${part}`,
       {
         key: `${groupKey}-motion-${part}`,
-        mask: `url(#${maskId})`,
+        mask: "url(#air-flow-fade-mask)",
       },
       [
         m(
@@ -591,8 +553,6 @@ function coilAirFlow(opts: {
     );
   }
 
-  const inboundMaskId = `air-flow-mask-${kind}-in`;
-  const outboundMaskId = `air-flow-mask-${kind}-out`;
   const gapLen = radius * Math.abs(thetaOutStart - thetaInEnd);
 
   return m(`g.${groupKey}`, { key: groupKey, "data-air-gap": String(gapLen) }, [
@@ -619,8 +579,6 @@ function coilAirFlow(opts: {
           }),
         ],
       ),
-      ...fadeMask(inboundMaskId, inboundY0, inboundY1, "in"),
-      ...fadeMask(outboundMaskId, outboundY0, outboundY1, "out"),
       m(
         "clipPath",
         {
@@ -644,8 +602,8 @@ function coilAirFlow(opts: {
       key: `${groupKey}-arrow`,
       d,
     }),
-    dartGroup("in", inboundPath, inboundMaskId),
-    dartGroup("out", outboundPath, outboundMaskId),
+    dartGroup("in", inboundPath),
+    dartGroup("out", outboundPath),
   ]);
 }
 
@@ -866,6 +824,7 @@ export function minisplitScene(config: DiagramConfig): m.Children {
     ),
 
     layer("air-flow", [
+      airFlowFadeDefs(),
       coilAirFlow({
         coil: condenserCoil,
         onLeft: condenserCoil.x < ZONE_WIDTH,
