@@ -16,6 +16,7 @@ import {
   fanIcon,
   flowArrow,
   reversingValveIcon,
+  reversingValveSlide,
 } from "../icons";
 import { dashArrowGroups } from "../dashArrows";
 import { layer } from "../layer";
@@ -46,8 +47,10 @@ const SIMPLE_BOX_LOOP_TOP = 250;
 const SIMPLE_BOX_LOOP_BOTTOM = 405;
 const SIMPLE_BOX_COIL_Y = 328;
 const SIMPLE_BOX_MACHINE_X = 660;
+const SIMPLE_BOX_RV_WIDTH = 150;
 /** Discharge / suction stub offset from the RV center (canonical indoor-left). */
 const SIMPLE_BOX_RV_STUB = 24;
+const SIMPLE_BOX_RV_PORT_PAD = 16;
 
 /** X along a simple-box coil. Fraction 0 is the left edge, 1 is the right. */
 function boxXAtFraction(centerX: number, fraction: number): number {
@@ -202,6 +205,51 @@ function reversingValveLayout(heating: boolean): CircuitLayout {
   };
 }
 
+function simpleBoxArrows(opts: {
+  heating: boolean;
+  showReversingValve: boolean;
+  indoorPipe: number;
+  outdoorPipe: number;
+  top: number;
+  bot: number;
+  mid: number;
+  machineX: number;
+  disX: number;
+  sucX: number;
+}): CircuitLayout["arrows"] {
+  const {
+    heating,
+    showReversingValve,
+    indoorPipe,
+    outdoorPipe,
+    top,
+    bot,
+    mid,
+    machineX,
+    disX,
+    sucX,
+  } = opts;
+  const loopArrows: CircuitLayout["arrows"] = [
+    { x: 370, y: top, rotation: 0 },
+    { x: outdoorPipe, y: mid, rotation: 90 },
+    { x: 370, y: bot, rotation: 180 },
+    { x: indoorPipe, y: mid, rotation: -90 },
+  ];
+  if (!showReversingValve) {
+    return loopArrows;
+  }
+  const vapor = heating ? 180 : 0;
+  const rvHalf = SIMPLE_BOX_RV_WIDTH / 2;
+  const stubY = Math.round((top + mid) / 2);
+  return [
+    ...(heating ? reverseArrows(loopArrows) : loopArrows),
+    { x: disX, y: stubY, rotation: -90 },
+    { x: sucX, y: stubY, rotation: 90 },
+    { x: machineX - rvHalf - SIMPLE_BOX_RV_PORT_PAD, y: top, rotation: vapor },
+    { x: machineX + rvHalf + SIMPLE_BOX_RV_PORT_PAD, y: top, rotation: vapor },
+  ];
+}
+
 function simpleBoxLayout(
   heating: boolean,
   flip: boolean,
@@ -242,12 +290,18 @@ function simpleBoxLayout(
     compressor: { x: machineX, y: showReversingValve ? mid : top },
     expansion: { x: machineX, y: bot },
     reversingValve: { x: machineX, y: top },
-    arrows: [
-      { x: 370, y: top, rotation: 0 },
-      { x: outdoorPipe, y: mid, rotation: 90 },
-      { x: 370, y: bot, rotation: 180 },
-      { x: indoorPipe, y: mid, rotation: -90 },
-    ],
+    arrows: simpleBoxArrows({
+      heating,
+      showReversingValve,
+      indoorPipe,
+      outdoorPipe,
+      top,
+      bot,
+      mid,
+      machineX,
+      disX,
+      sucX,
+    }),
     stations: assignStations(
       {
         indoorTop: { x: 400, y: 210 },
@@ -308,7 +362,10 @@ export function circuitLayout(config: DiagramConfig): CircuitLayout {
     layout = iconLayout(heating);
   }
 
-  if (heating) {
+  const reverseLoopArrows =
+    heating &&
+    !(config.componentStyle === "simpleBox" && config.showReversingValve);
+  if (reverseLoopArrows) {
     layout = { ...layout, arrows: reverseArrows(layout.arrows) };
   }
 
@@ -955,9 +1012,14 @@ export function minisplitScene(config: DiagramConfig): m.Children {
           id: "reversingValve",
           x: circuit.reversingValve.x,
           y: circuit.reversingValve.y,
-          width: 150,
-          height: 52,
+          width: SIMPLE_BOX_RV_WIDTH,
+          height: SIMPLE_BOX_HEIGHT,
           label: "Reversing valve",
+          ornament: m(
+            "g",
+            { transform: "translate(0 -16)" },
+            reversingValveSlide(heating, 14),
+          ),
         }),
       ]),
     ]),

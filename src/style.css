@@ -427,6 +427,7 @@ body {
 
 .rv-slide {
   fill: var(--pipe-hot);
+  stroke: none;
 }
 
 .rv-port {

@@ -41,15 +41,20 @@ export function expansionValveIcon(): m.Children {
 export function reversingValveIcon(heating = false): m.Children {
   return [
     m("rect.rv-body", { x: -22, y: -16, width: 44, height: 32, rx: 4 }),
-    m("path.rv-slide", {
-      d: "M-12,-6 L4,-6 L12,6 L-4,6 Z",
-      transform: heating ? "scale(-1 1)" : undefined,
-    }),
+    reversingValveSlide(heating, 12),
     m("circle.rv-port", { cx: 0, cy: -16, r: 3 }),
     m("circle.rv-port", { cx: 0, cy: 16, r: 3 }),
     m("circle.rv-port", { cx: -22, cy: 0, r: 3 }),
     m("circle.rv-port", { cx: 22, cy: 0, r: 3 }),
   ];
+}
+
+export function reversingValveSlide(heating: boolean, halfWidth = 12): m.Vnode {
+  const h = halfWidth;
+  return m("path.rv-slide", {
+    d: `M${-h},${-h * 0.5} L${h * 0.35},${-h * 0.5} L${h},${h * 0.5} L${-h * 0.35},${h * 0.5} Z`,
+    transform: heating ? "scale(-1 1)" : undefined,
+  });
 }
 
 export function coilFins(opts: {
@@ -98,8 +103,9 @@ export function componentBox(opts: {
   height: number;
   label: string;
   pulse?: boolean;
+  ornament?: m.Children;
 }): m.Vnode {
-  const { id, x, y, width, height, label, pulse } = opts;
+  const { id, x, y, width, height, label, pulse, ornament } = opts;
   const body = [
     m("rect.simple-box", {
       x: -width / 2,
@@ -108,6 +114,7 @@ export function componentBox(opts: {
       height,
       rx: 4,
     }),
+    ...(ornament ? [ornament] : []),
     m(
       "text.box-label",
       {
