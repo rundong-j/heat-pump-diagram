@@ -104,8 +104,9 @@ export function componentBox(opts: {
   label: string;
   pulse?: boolean;
   ornament?: m.Children;
+  labelDy?: string;
 }): m.Vnode {
-  const { id, x, y, width, height, label, pulse, ornament } = opts;
+  const { id, x, y, width, height, label, pulse, ornament, labelDy } = opts;
   const body = [
     m("rect.simple-box", {
       x: -width / 2,
@@ -119,7 +120,7 @@ export function componentBox(opts: {
       "text.box-label",
       {
         "text-anchor": "middle",
-        dy: "0.35em",
+        dy: labelDy ?? "0.35em",
       },
       label,
     ),

@@ -47,7 +47,7 @@ const SIMPLE_BOX_LOOP_TOP = 250;
 const SIMPLE_BOX_LOOP_BOTTOM = 405;
 const SIMPLE_BOX_COIL_Y = 328;
 const SIMPLE_BOX_MACHINE_X = 660;
-const SIMPLE_BOX_RV_WIDTH = 150;
+const SIMPLE_BOX_RV_WIDTH = 132;
 /** Discharge / suction stub offset from the RV center (canonical indoor-left). */
 const SIMPLE_BOX_RV_STUB = 24;
 const SIMPLE_BOX_RV_PORT_PAD = 16;
@@ -1017,9 +1017,10 @@ export function minisplitScene(config: DiagramConfig): m.Children {
           label: "Reversing valve",
           ornament: m(
             "g",
-            { transform: "translate(0 -16)" },
+            { transform: "translate(0 -17)" },
             reversingValveSlide(heating, 14),
           ),
+          labelDy: "1.05em",
         }),
       ]),
     ]),
