@@ -409,8 +409,9 @@ function airFlowFadeDefs(): m.Vnode {
 /**
  * Uniform circular ring-section arrow on the outside of the refrigerant loop.
  * Left coil: 1/3 mark, bulge right `)` . Right coil: 2/3 mark, bulge left `(` .
- * Reject (condenser) points down: solid warm dart into the box, solid hot dart out.
- * Absorb (evaporator) points up: solid cool dart into the box, solid cold dart out.
+ * Indoor always travels down; outdoor always travels up (head-unit / outdoor discharge).
+ * Reject (condenser): solid warm dart into the box, solid hot dart out.
+ * Absorb (evaporator): solid cool dart into the box, solid cold dart out.
  */
 function coilAirFlow(opts: {
   coil: Point;
@@ -828,13 +829,13 @@ export function minisplitScene(config: DiagramConfig): m.Children {
       coilAirFlow({
         coil: condenserCoil,
         onLeft: condenserCoil.x < ZONE_WIDTH,
-        pointUp: false,
+        pointUp: condenserCoil === circuit.outdoorCoil,
         kind: "reject",
       }),
       coilAirFlow({
         coil: evaporatorCoil,
         onLeft: evaporatorCoil.x < ZONE_WIDTH,
-        pointUp: true,
+        pointUp: evaporatorCoil === circuit.outdoorCoil,
         kind: "absorb",
       }),
     ]),
@@ -977,17 +978,17 @@ export function minisplitScene(config: DiagramConfig): m.Children {
     layer("heat-transfer", [
       label(
         heatFlowLabel(indoorRole),
-        placeX(195),
+        circuit.indoorCoil.x,
         475,
-        placeAnchor("middle"),
+        "middle",
         undefined,
         "heat-indoor",
       ),
       label(
         heatFlowLabel(outdoorRole),
-        placeX(755),
+        circuit.outdoorCoil.x,
         475,
-        placeAnchor("middle"),
+        "middle",
         undefined,
         "heat-outdoor",
       ),
