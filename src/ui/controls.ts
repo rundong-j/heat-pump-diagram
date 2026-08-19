@@ -366,7 +366,6 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
           squareCycleSwitch<"off" | "on">({
             name: "Reversing valve",
             value: config.showReversingValve ? "on" : "off",
-            disabled: true,
             options: [
               { value: "off", label: "Off", icon: simpleLoopIcon },
               { value: "on", label: "On", icon: reversingValveIcon },

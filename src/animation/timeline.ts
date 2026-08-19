@@ -2,7 +2,7 @@ import gsap from "gsap";
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 import type { DiagramConfig, PlaybackState } from "../model/types";
 import { PIPE_COLOR_IDS } from "../diagram/dashArrows";
-import { topologyKey } from "../diagram/layouts/minisplit";
+import { reverseParticleLoop, topologyKey } from "../diagram/layouts/minisplit";
 
 gsap.registerPlugin(MotionPathPlugin);
 
@@ -49,7 +49,7 @@ export class SceneAnimation {
     this.mm.add("(prefers-reduced-motion: no-preference)", () => {
       this.applyParticleVisibility(config.lineStyle);
       this.machines = buildMachineTimeline(svg);
-      this.flow = buildFlowTimeline(svg, config.mode === "heating");
+      this.flow = buildFlowTimeline(svg, reverseParticleLoop(config));
       this.dashes = buildDashTimeline(svg);
       this.airFlow = buildAirFlowTimeline(svg);
       this.applyPlayback(config.playback);
@@ -124,7 +124,7 @@ export class SceneAnimation {
     this.flow?.kill();
     this.dashes?.kill();
     this.airFlow?.kill();
-    this.flow = buildFlowTimeline(this.svg, config.mode === "heating");
+    this.flow = buildFlowTimeline(this.svg, reverseParticleLoop(config));
     this.dashes = buildDashTimeline(this.svg);
     this.airFlow = buildAirFlowTimeline(this.svg);
     this.flow.progress(progress);

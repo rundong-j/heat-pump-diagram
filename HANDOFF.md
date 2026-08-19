@@ -15,7 +15,7 @@ If the UI looks stale after edits, kill stray Vite listeners on 5173–5180 and 
 | --- | --- | --- |
 | 0 | Vite/Mithril/TS shell, stable SVG viewport | Done |
 | 1 | Mini-split cooling loop, abstract icons, pauseable GSAP flow | Done |
-| 1+ | Simple-box style, reversing-valve show/hide, indoor/outdoor flip, layout polish | Done. RV HUD tile exists but is **disabled** (default off). |
+| 1+ | Simple-box style, reversing-valve show/hide, indoor/outdoor flip, layout polish | Done. RV HUD tile **enabled** (default **off**). **Phase 2:** simple-box RV sits on the top run at `660,250`; compressor drops to `660,328`; discharge/suction stubs at `±24`. Coils, liquid line, TXV, and heat-transfer insets stay. `reversingValveLayout()` is icon-only. |
 | 2 | Independent P/T/phase overlays; heating mode (reverse flow, coil role swap) | Done. Heating reverses particles/arrows, swaps coil roles, flips RV slide + TXV. Overlay checkboxes drive canned badges from `cycleData.ts`. **Heat transfer** overlay is enabled (default **on**). |
 | 2+ | Light/dark theme; zone fills; diagram font scale; coil label style | Done. Default **light**. Font size is a square switch (Small / Normal / Large / **XL default 1.3**). Coil labels: Evap / Cond vs Outdoor / Indoor. |
 | 2++ | Square-switch HUD; simplified playback; outdoor weather | Done. 3-column tiles. Playback is play-pause + speed slider + **screenshot** (4K JPEG save dialog). |
@@ -67,7 +67,7 @@ src/
 **Square switches:** `squareCycleSwitch()` in `controls.ts`. 3-column grid, title top / icon center / value bottom; click cycles. Icon is optional (Indoor and Coil labels are text-only).
 
 **System rows:**
-1. **Type** (disabled) · **Cycle** (fire / snowflake) · **Reversing valve** (disabled, Off)
+1. **Type** (disabled) · **Cycle** (fire / snowflake) · **Reversing valve** (Off \| On; default Off)
 2. **Component style** (disabled, Simple box) · **Background** (None \| House & weather) · **Coil labels** (Evap / Cond \| Outdoor / Indoor)
 3. **Indoor** (Left side \| Right side) · **Theme** (light bulb / moon) · **Font size** (Aa, default XL)
 4. **Line style** (Solid \| Dashed \| Arrow) · **Line color** (Temperature-based \| Constant) · **Line width & spacing** (Constant \| Pressure-based)
@@ -88,7 +88,9 @@ Layer order **back → front**: zone fills → outdoor weather → house outline
 
 Heating reverses arrow rotations (normalize `% 360` before `flipRotation`). `mirrorLayout()` flips X for `indoorSide: "right"`. Icon equipment flips with `translate(960 0) scale(-1 1)` using `VIEWPORT_WIDTH`.
 
-**Simple-box loop (RV off):** compressor and expansion share outdoor x before mirror (`660`); expansion under compressor. Coil **box** centers `840` / `145` at y=`328`, width `140`. Default (heat-transfer **on**) insets the loop to make room for arrows: **left-coil** riser at **2/3 from the left**, **right-coil** riser at **1/3 from the left**, in screen space, regardless of evap/cond or indoor/outdoor. Unchecking heat transfer restores risers through **both box centers**. Canonical fractions invert when `indoorSide: "right"` so mirroring does not swap them. Paired arrows at x=`370`. Heat-transfer arrows are **circular ring sections** (constant radius, sagitta `24`) on the **outside** of the loop at **1/3** of a left coil (bulge right `)` ) or **2/3** of a right coil (bulge left `(` ); both ends sit outward. **Indoor** always points **down** (head-unit discharge); **outdoor** always points **up**. Colors still follow coil role (reject warm→hot, absorb cool→cold), not direction. Shaft `26` / head `42`. Span the simple-box loop Y (`250`–`405`). Motion splits each ring at the coil box (`328±26`): inbound solid warm (condenser) or cool (evaporator); outbound solid hot or cold. Outbound is delayed by the box-gap arc so the same dart appears to travel through at constant speed with a color change. Y-masks fade only the outer ends (one shared loop-height mask); heads clip to the flat shaft ends so they slide in/out of the box. No traveling color gradient.
+**Simple-box loop (RV off):** compressor and expansion share outdoor x before mirror (`SIMPLE_BOX_MACHINE_X` `660`); expansion under compressor. Coil **box** centers `840` / `145` at y=`328`, width `140`. Default (heat-transfer **on**) insets the loop to make room for arrows: **left-coil** riser at **2/3 from the left**, **right-coil** riser at **1/3 from the left**, in screen space, regardless of evap/cond or indoor/outdoor. Unchecking heat transfer restores risers through **both box centers**. Canonical fractions invert when `indoorSide: "right"` so mirroring does not swap them. Paired arrows at x=`370`. Heat-transfer arrows are **circular ring sections** (constant radius, sagitta `24`) on the **outside** of the loop at **1/3** of a left coil (bulge right `)` ) or **2/3** of a right coil (bulge left `(` ); both ends sit outward. **Indoor** always points **down** (head-unit discharge); **outdoor** always points **up**. Colors still follow coil role (reject warm→hot, absorb cool→cold), not direction. Shaft `26` / head `42`. Span the simple-box loop Y (`250`–`405`). Motion splits each ring at the coil box (`328±26`): inbound solid warm (condenser) or cool (evaporator); outbound solid hot or cold. Outbound is delayed by the box-gap arc so the same dart appears to travel through at constant speed with a color change. Y-masks fade only the outer ends (one shared loop-height mask); heads clip to the flat shaft ends so they slide in/out of the box. No traveling color gradient.
+
+**Simple-box RV on (Phase 2):** same coils, liquid line, TXV, and insets. RV takes the top-run slot (`660,250`); compressor hangs at coil Y (`660,328`). Discharge stub `636`, suction stub `684`. Top run is indoor vapor → RV → outdoor vapor; `hot`/`cool` route through the valve by mode (`condPipe` / `evapPipe`); `warm`/`cold` unchanged. Hidden `loop` detours through the compressor and is already in flow order — `reverseParticleLoop()` is false so GSAP does not play it backwards. Coil/liquid direction arrows still use `reverseArrows` on heating. Do not use `reversingValveLayout()` for simple-box.
 
 **House & weather:** both always in the DOM. Shown only when `data-background="house"` (plain white + no weather/zones/outline when `none`). Weather: `[data-mode="heating"|"cooling"]` on `.weather-snow` / `.weather-sun`. Canonical indoor-left house body is `M48,188 H412 V492 H48 Z` (floor at **492** so heat-transfer labels under each coil box on a shared baseline **y=475** stay aligned and the indoor label sits inside the house with margin). Heat-transfer text uses already-mirrored `circuit.indoorCoil.x` / `circuit.outdoorCoil.x` (canonical `145` / `840`). Roof `M36,188 L230,78 L424,188 Z`. `houseContext(flip)` mirrors with `translate(VIEWPORT_WIDTH 0) scale(-1 1)`.
 
@@ -108,15 +110,16 @@ Screenshot: clones `.diagram-scene`, inlines CSS variables + stylesheets, raster
 6. **Arrow reverse + mirror:** normalize rotations after heating reverse or indoor-right flip.
 7. **Icon equipment coords** are canonical (indoor-left) inside the flip group; simple-box boxes use already-mirrored `circuit.*` positions.
 8. **Control-panel label CSS:** `.control-panel label { flex-direction: column }`. Playback speed uses `.playback-hud label.speed-control { flex-direction: row }`.
-9. **Disabled HUD tiles** (Type, reversing valve, component style) are reserved product surface — do not delete.
+9. **Disabled HUD tiles** (Type, component style) are reserved product surface — do not delete. Reversing valve is enabled; default remains **off**.
 10. **Local URL** must include the Vite `base` path: `/heat-pump-diagram/`. Connection refused on 5173 = server not running.
 
 ## Remaining work (priority)
 
-1. **Phase 3 — ducted.** Second layout sharing loop topology. Split `minisplit.ts` / layout registry before copying a fourth path set. Re-enable Type when ready.
-2. **Phase 4 — art.** Sketch SVGs with shared pipe anchors; cross-section later. Re-enable those style options when ready.
-3. **Phase 5 — share/present.** Serialize `DiagramConfig` to the URL; compact presenter chrome; SVG/PNG export fallback (JPEG screenshot already works).
-4. **Phase 6 — PowerPoint.** Second HTML entry, add-in-only XML manifest (`ContentApp`), HTTPS host, `Office.context.document.settings` + `saveAsync` on every change, `getActiveViewAsync` (web slideshow is a new session so `ActiveViewChanged` will not fire). Controls in the content frame only. Pad top-right for the Office personality menu.
+1. **Simple-box reversing valve — Phase 3.** Direction arrows on the four RV ports; compressor arrows stay fixed; optional slide glyph. Fit: indoor-right, cooling, heat-transfer on/off, pressure-based widths at the valve, screenshot, reduced motion. Shrink the RV box if `150×52` crowds the top run.
+2. **Ducted layout.** Second layout sharing loop topology. Split `minisplit.ts` / layout registry before copying a fourth path set. Re-enable Type when ready.
+3. **Phase 4 — art.** Sketch SVGs with shared pipe anchors; cross-section later. Re-enable those style options when ready.
+4. **Phase 5 — share/present.** Serialize `DiagramConfig` to the URL; compact presenter chrome; SVG/PNG export fallback (JPEG screenshot already works).
+5. **Phase 6 — PowerPoint.** Second HTML entry, add-in-only XML manifest (`ContentApp`), HTTPS host, `Office.context.document.settings` + `saveAsync` on every change, `getActiveViewAsync` (web slideshow is a new session so `ActiveViewChanged` will not fire). Controls in the content frame only. Pad top-right for the Office personality menu.
 
 ## Out of scope until after V2 shell
 

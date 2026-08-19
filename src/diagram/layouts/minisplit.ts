@@ -45,6 +45,9 @@ const SIMPLE_BOX_HEIGHT = 52;
 const SIMPLE_BOX_LOOP_TOP = 250;
 const SIMPLE_BOX_LOOP_BOTTOM = 405;
 const SIMPLE_BOX_COIL_Y = 328;
+const SIMPLE_BOX_MACHINE_X = 660;
+/** Discharge / suction stub offset from the RV center (canonical indoor-left). */
+const SIMPLE_BOX_RV_STUB = 24;
 
 /** X along a simple-box coil. Fraction 0 is the left edge, 1 is the right. */
 function boxXAtFraction(centerX: number, fraction: number): number {
@@ -203,6 +206,7 @@ function simpleBoxLayout(
   heating: boolean,
   flip: boolean,
   compact: boolean,
+  showReversingValve: boolean,
 ): CircuitLayout {
   const indoorCx = 145;
   const outdoorCx = 840;
@@ -211,26 +215,33 @@ function simpleBoxLayout(
   const top = SIMPLE_BOX_LOOP_TOP;
   const bot = SIMPLE_BOX_LOOP_BOTTOM;
   const mid = SIMPLE_BOX_COIL_Y;
+  const machineX = SIMPLE_BOX_MACHINE_X;
+  const condPipe = heating ? indoorPipe : outdoorPipe;
+  const evapPipe = heating ? outdoorPipe : indoorPipe;
+  const disX = machineX - SIMPLE_BOX_RV_STUB;
+  const sucX = machineX + SIMPLE_BOX_RV_STUB;
+
+  const loop = showReversingValve
+    ? `M${disX},${mid} V${top} H${condPipe} V${bot} H${evapPipe} V${top} H${sucX} V${mid} H${disX} Z`
+    : `M${machineX},${top} H${outdoorPipe} V${bot} H${indoorPipe} V${top} H${machineX} Z`;
+  const hot = showReversingValve
+    ? `M${disX},${mid} V${top} H${condPipe} V${mid}`
+    : `M${machineX},${top} H${condPipe} V${mid}`;
+  const cool = showReversingValve
+    ? `M${evapPipe},${mid} V${top} H${sucX} V${mid}`
+    : `M${evapPipe},${mid} V${top} H${machineX}`;
 
   return {
-    loop: `M660,${top} H${outdoorPipe} V${bot} H${indoorPipe} V${top} H660 Z`,
-    hot: heating
-      ? `M660,${top} H${indoorPipe} V${mid}`
-      : `M660,${top} H${outdoorPipe} V${mid}`,
-    warm: heating
-      ? `M${indoorPipe},${mid} V${bot} H660`
-      : `M${outdoorPipe},${mid} V${bot} H660`,
-    cold: heating
-      ? `M660,${bot} H${outdoorPipe} V${mid}`
-      : `M660,${bot} H${indoorPipe} V${mid}`,
-    cool: heating
-      ? `M${outdoorPipe},${mid} V${top} H660`
-      : `M${indoorPipe},${mid} V${top} H660`,
+    loop,
+    hot,
+    warm: `M${condPipe},${mid} V${bot} H${machineX}`,
+    cold: `M${machineX},${bot} H${evapPipe} V${mid}`,
+    cool,
     indoorCoil: { x: indoorCx, y: mid },
     outdoorCoil: { x: outdoorCx, y: mid },
-    compressor: { x: 660, y: top },
-    expansion: { x: 660, y: bot },
-    reversingValve: { x: 700, y: top },
+    compressor: { x: machineX, y: showReversingValve ? mid : top },
+    expansion: { x: machineX, y: bot },
+    reversingValve: { x: machineX, y: top },
     arrows: [
       { x: 370, y: top, rotation: 0 },
       { x: outdoorPipe, y: mid, rotation: 90 },
@@ -284,14 +295,15 @@ export function circuitLayout(config: DiagramConfig): CircuitLayout {
   const heating = config.mode === "heating";
   let layout: CircuitLayout;
 
-  if (config.showReversingValve) {
-    layout = reversingValveLayout(heating);
-  } else if (config.componentStyle === "simpleBox") {
+  if (config.componentStyle === "simpleBox") {
     layout = simpleBoxLayout(
       heating,
       config.indoorSide === "right",
       config.overlays.heatTransfer,
+      config.showReversingValve,
     );
+  } else if (config.showReversingValve) {
+    layout = reversingValveLayout(heating);
   } else {
     layout = iconLayout(heating);
   }
@@ -305,6 +317,14 @@ export function circuitLayout(config: DiagramConfig): CircuitLayout {
 
 export function topologyKey(config: DiagramConfig): string {
   return `${config.showReversingValve}:${config.componentStyle}:${config.indoorSide}:${config.mode}:${config.overlays.heatTransfer}`;
+}
+
+/** Simple-box RV loops are already drawn in flow order; do not play them backwards. */
+export function reverseParticleLoop(config: DiagramConfig): boolean {
+  return (
+    config.mode === "heating" &&
+    !(config.componentStyle === "simpleBox" && config.showReversingValve)
+  );
 }
 
 const PARTICLE_COUNT = 8;
