@@ -389,6 +389,7 @@ body {
   fill: var(--particle-fill);
   stroke: var(--particle-stroke);
   stroke-width: 1;
+  stroke-linejoin: miter;
   will-change: transform;
 }
 

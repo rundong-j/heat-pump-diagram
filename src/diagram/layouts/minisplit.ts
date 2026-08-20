@@ -618,20 +618,20 @@ export function reverseParticleLoop(config: DiagramConfig): boolean {
 }
 
 const PARTICLE_COUNT = 8;
+/** Chevron pointing +x; MotionPath autoRotate keeps the tip along travel. */
+const PARTICLE_ARROW_POINTS = "-8,-5.5 8,0 -8,5.5 -3.5,0";
 
 function particles(): m.Children {
-  const dots: m.Children[] = [];
+  const arrows: m.Children[] = [];
   for (let i = 0; i < PARTICLE_COUNT; i += 1) {
-    dots.push(
-      m("circle.particle", {
+    arrows.push(
+      m("polygon.particle", {
         key: `p-${i}`,
-        r: 4.5,
-        cx: 0,
-        cy: 0,
+        points: PARTICLE_ARROW_POINTS,
       }),
     );
   }
-  return dots;
+  return arrows;
 }
 
 function label(

@@ -195,7 +195,17 @@ function backgroundHouseIcon(): m.Children {
 const LINE_STYLE_PATH = "M3.5 16.5 H8.5 V7.5 H15.5 V16.5 H20.5";
 
 function solidLineIcon(): m.Children {
-  return hudIcon(m("path", { d: LINE_STYLE_PATH }), { strokeWidth: 2 });
+  return hudIcon(
+    [
+      m("path", { d: LINE_STYLE_PATH }),
+      m("polygon", {
+        points: "9.2,10.2 14.8,12 9.2,13.8 10.8,12",
+        fill: "currentColor",
+        stroke: "none",
+      }),
+    ],
+    { strokeWidth: 2 },
+  );
 }
 
 function dashedLineIcon(): m.Children {

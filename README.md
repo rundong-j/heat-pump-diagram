@@ -10,7 +10,7 @@ Thermodynamic values are illustrative teaching aids, not a refrigerant property 
 
 - Mini-split cooling and heating modes with animated refrigerant flow
 - Component style: simple box (default) or abstract icon (serpentine coils, schematic compressor / expansion valve, and a four-way reversing-valve cross-section when the valve is on, with the compressor centered on short suction and discharge stubs)
-- Line style: solid pipes with particles, marching dashes (default), or flow arrowheads
+- Line style: solid pipes with traveling arrows, marching dashes (default), or flow arrowheads
 - Line color: four-stop temperature scale (default) or constant house-outline stroke
 - Line width & spacing: pressure-based (default; thick/short high-side, thin/regular low-side) or uniform
 - Light/dark theme, XL default font, indoor unit left or right

@@ -256,6 +256,7 @@ function buildFlowTimeline(svg: SVGSVGElement, reversed: boolean): gsap.core.Tim
           path: loop,
           align: loop,
           alignOrigin: [0.5, 0.5],
+          autoRotate: true,
           start: offset,
           end: reversed ? offset - 1 : offset + 1,
         },
