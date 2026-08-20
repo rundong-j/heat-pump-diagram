@@ -56,10 +56,17 @@ const SIMPLE_BOX_RV_WIDTH = 132;
 /** Discharge / suction stub offset from the RV center (canonical indoor-left). */
 const SIMPLE_BOX_RV_STUB = 24;
 const SIMPLE_BOX_RV_PORT_PAD = 16;
-/** Icon 4-way valve: top ports sit this far left/right of the machine column. */
-const ICON_RV_HALF = 36;
-/** Icon 4-way valve: bottom of the U-tubes below the top loop. */
-const ICON_RV_DROP = 26;
+/** Icon 4-way: indoor / outdoor ports sit this far from the suction (center) port. */
+const ICON_RV_PORT = 34;
+/** Icon 4-way: discharge riser, screen-right of the unflipped compressor (clears the caption). */
+const ICON_RV_DISCHARGE_OFFSET = 68;
+/** Icon 4-way: compressor discharge enters the top port this far above the vapor line. */
+const ICON_RV_DIN = 42;
+/** Icon 4-way: high-pressure chamber path above the vapor line. */
+const ICON_RV_CHAMBER = 28;
+/** Icon 4-way: sliding suction U (canoe) above the vapor line. */
+const ICON_RV_SLIDE = 16;
+const ICON_RV_PORT_PAD = 16;
 const COMPRESSOR_TRAP_HALF_WIDTH = 22;
 const COMPRESSOR_TRAP_LEFT_HALF = 20;
 const COMPRESSOR_TRAP_RIGHT_HALF = 13;
@@ -234,6 +241,29 @@ function reversingValveLayout(heating: boolean): CircuitLayout {
 }
 */
 
+function iconRvGeom(
+  machineX: number,
+  top: number,
+  heating: boolean,
+  flip: boolean,
+) {
+  const leftX = machineX - ICON_RV_PORT;
+  const rightX = machineX + ICON_RV_PORT;
+  const coveredX = heating ? rightX : leftX;
+  const uncoveredX = heating ? leftX : rightX;
+  return {
+    leftX,
+    midX: machineX,
+    rightX,
+    coveredX,
+    uncoveredX,
+    disX: machineX + (flip ? -ICON_RV_DISCHARGE_OFFSET : ICON_RV_DISCHARGE_OFFSET),
+    dInY: top - ICON_RV_DIN,
+    chamberY: top - ICON_RV_CHAMBER,
+    slideY: top - ICON_RV_SLIDE,
+  };
+}
+
 function simpleBoxArrows(opts: {
   heating: boolean;
   showReversingValve: boolean;
@@ -245,6 +275,7 @@ function simpleBoxArrows(opts: {
   machineX: number;
   disX: number;
   sucX: number;
+  iconValve?: boolean;
 }): CircuitLayout["arrows"] {
   const {
     heating,
@@ -257,6 +288,7 @@ function simpleBoxArrows(opts: {
     machineX,
     disX,
     sucX,
+    iconValve,
   } = opts;
   const loopArrows: CircuitLayout["arrows"] = [
     { x: 370, y: top, rotation: 0 },
@@ -268,14 +300,19 @@ function simpleBoxArrows(opts: {
     return loopArrows;
   }
   const vapor = heating ? 180 : 0;
-  const rvHalf = SIMPLE_BOX_RV_WIDTH / 2;
   const stubY = Math.round((top + mid) / 2);
+  const vaporLeft = iconValve
+    ? machineX - ICON_RV_PORT - ICON_RV_PORT_PAD
+    : machineX - SIMPLE_BOX_RV_WIDTH / 2 - SIMPLE_BOX_RV_PORT_PAD;
+  const vaporRight = iconValve
+    ? machineX + ICON_RV_PORT + ICON_RV_PORT_PAD
+    : machineX + SIMPLE_BOX_RV_WIDTH / 2 + SIMPLE_BOX_RV_PORT_PAD;
   return [
     ...(heating ? reverseArrows(loopArrows) : loopArrows),
     { x: disX, y: stubY, rotation: -90 },
     { x: sucX, y: stubY, rotation: 90 },
-    { x: machineX - rvHalf - SIMPLE_BOX_RV_PORT_PAD, y: top, rotation: vapor },
-    { x: machineX + rvHalf + SIMPLE_BOX_RV_PORT_PAD, y: top, rotation: vapor },
+    { x: vaporLeft, y: top, rotation: vapor },
+    { x: vaporRight, y: top, rotation: vapor },
   ];
 }
 
@@ -372,8 +409,12 @@ function simpleBoxLayout(
   const machineX = SIMPLE_BOX_MACHINE_X;
   const condPipe = heating ? indoorPipe : outdoorPipe;
   const evapPipe = heating ? outdoorPipe : indoorPipe;
-  const disX = machineX - SIMPLE_BOX_RV_STUB;
-  const sucX = machineX + SIMPLE_BOX_RV_STUB;
+  const iconRv =
+    iconCoils && showReversingValve
+      ? iconRvGeom(machineX, top, heating, flip)
+      : null;
+  const disX = iconRv?.disX ?? machineX - SIMPLE_BOX_RV_STUB;
+  const sucX = iconRv?.midX ?? machineX + SIMPLE_BOX_RV_STUB;
   const expWest = machineX - EXPANSION_SYMBOL_HALF_WIDTH;
   const expEast = machineX + EXPANSION_SYMBOL_HALF_WIDTH;
   const warmEnd = condPipe < machineX ? expWest : expEast;
@@ -407,22 +448,20 @@ function simpleBoxLayout(
     outdoorCoilSegments = outdoorPieces;
     const condX = heating ? indoorPipe : outdoorPipe;
     const evapX = heating ? outdoorPipe : indoorPipe;
-    const leftX = machineX - ICON_RV_HALF;
-    const rightX = machineX + ICON_RV_HALF;
-    const valveBot = top + ICON_RV_DROP;
-    const rvHotTop = heating ? leftX : rightX;
-    const rvCoolTop = heating ? rightX : leftX;
-    hot = showReversingValve
-      ? `M${disX},${mid} V${valveBot} H${rvHotTop} V${top} H${condX} V${coilTop}`
-      : `M${machineX},${top} H${condX} V${coilTop}`;
-    warm = `M${condX},${coilBot} V${bot} H${warmEnd}`;
-    cold = `M${coldStart},${bot} H${evapX} V${coilBot}`;
-    cool = showReversingValve
-      ? `M${evapX},${coilTop} V${top} H${rvCoolTop} V${valveBot} H${sucX} V${mid}`
-      : `M${evapX},${coilTop} V${top} H${machineX}`;
-    loop = showReversingValve
-      ? `M${disX},${mid} V${valveBot} H${rvHotTop} V${top} H${condPipe} V${bot} H${evapPipe} V${top} H${rvCoolTop} V${valveBot} H${sucX} V${mid} H${disX} Z`
-      : `M${machineX},${top} H${outdoorPipe} V${bot} H${indoorPipe} V${top} H${machineX} Z`;
+    if (iconRv) {
+      const { uncoveredX, coveredX } = iconRv;
+      hot = `M${iconRv.disX},${mid} V${iconRv.dInY} H${iconRv.midX} V${iconRv.chamberY} H${uncoveredX} V${top} H${condX} V${coilTop}`;
+      warm = `M${condX},${coilBot} V${bot} H${warmEnd}`;
+      cold = `M${coldStart},${bot} H${evapX} V${coilBot}`;
+      cool = `M${evapX},${coilTop} V${top} H${coveredX} V${iconRv.slideY} H${iconRv.midX} V${mid}`;
+      loop = `M${iconRv.disX},${mid} V${iconRv.dInY} H${iconRv.midX} V${iconRv.chamberY} H${uncoveredX} V${top} H${condPipe} V${bot} H${evapPipe} V${top} H${coveredX} V${iconRv.slideY} H${iconRv.midX} V${mid} H${iconRv.disX} Z`;
+    } else {
+      hot = `M${machineX},${top} H${condX} V${coilTop}`;
+      warm = `M${condX},${coilBot} V${bot} H${warmEnd}`;
+      cold = `M${coldStart},${bot} H${evapX} V${coilBot}`;
+      cool = `M${evapX},${coilTop} V${top} H${machineX}`;
+      loop = `M${machineX},${top} H${outdoorPipe} V${bot} H${indoorPipe} V${top} H${machineX} Z`;
+    }
   } else {
     indoorCoilSegments = emptyCoilSegments();
     outdoorCoilSegments = emptyCoilSegments();
@@ -451,7 +490,7 @@ function simpleBoxLayout(
     outdoorCoil: { x: outdoorCx, y: mid },
     compressor: { x: machineX, y: showReversingValve ? mid : top },
     expansion: { x: machineX, y: bot },
-    reversingValve: { x: machineX, y: top },
+    reversingValve: { x: machineX, y: iconRv ? iconRv.dInY : top },
     arrows: simpleBoxArrows({
       heating,
       showReversingValve,
@@ -463,6 +502,7 @@ function simpleBoxLayout(
       machineX,
       disX,
       sucX,
+      iconValve: Boolean(iconRv),
     }),
     stations: assignStations(
       {
@@ -1341,7 +1381,7 @@ function boxedEquipment(
             "text.box-label",
             {
               x: circuit.reversingValve.x,
-              y: SIMPLE_BOX_LOOP_TOP - 18,
+              y: circuit.reversingValve.y - 16,
               "text-anchor": "middle",
               dy: "-0.15em",
             },

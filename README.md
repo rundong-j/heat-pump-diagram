@@ -9,7 +9,7 @@ Thermodynamic values are illustrative teaching aids, not a refrigerant property 
 ## Features
 
 - Mini-split cooling and heating modes with animated refrigerant flow
-- Component style: simple box (default) or abstract icon (serpentine coils, schematic compressor / expansion valve / reversing valve)
+- Component style: simple box (default) or abstract icon (serpentine coils, schematic compressor / expansion valve, and a four-way reversing-valve cross-section when the valve is on)
 - Line style: solid pipes with particles, marching dashes (default), or flow arrowheads
 - Line color: four-stop temperature scale (default) or constant house-outline stroke
 - Line width & spacing: pressure-based (default; thick/short high-side, thin/regular low-side) or uniform
@@ -55,7 +55,7 @@ src/
 
 ## Defaults
 
-On first load: mini-split, heating, simple box, light theme, house & weather, indoor unit on the right, role-based coil labels (Evaporator / Condenser), XL font, dashed lines, temperature-based color, pressure-based width & spacing, heat transfer on. Toggle **Component style** to Abstract icon for winding coils and line-drawn reversing valve.
+On first load: mini-split, heating, simple box, light theme, house & weather, indoor unit on the right, role-based coil labels (Evaporator / Condenser), XL font, dashed lines, temperature-based color, pressure-based width & spacing, heat transfer on. Toggle **Component style** to Abstract icon for winding coils and a line-drawn four-way reversing-valve cross-section.
 
 ## Roadmap
 

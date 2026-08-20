@@ -146,6 +146,9 @@ export class SceneAnimation {
     if (!reduced) {
       this.applyParticleVisibility(config.lineStyle);
     }
+    if (config.lineStyle !== "arrow") {
+      hideDashArrows(this.svg);
+    }
 
     const nextTopology = topologyKey(config);
     if (this.topology !== nextTopology) {
@@ -271,6 +274,14 @@ function dashSecondsForLoop(svg: SVGSVGElement): number {
     return LOOP_SECONDS;
   }
   return (DASH_CYCLE * LOOP_SECONDS) / (loopLength * DASH_SPEED_VS_PARTICLES);
+}
+
+function hideDashArrows(svg: SVGSVGElement): void {
+  for (const track of cacheFor(svg).dashTracks) {
+    for (const mark of track.marks) {
+      mark.setAttribute("visibility", "hidden");
+    }
+  }
 }
 
 function layoutDashArrows(svg: SVGSVGElement, offset: number): void {

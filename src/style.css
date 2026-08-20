@@ -339,12 +339,12 @@ body {
 }
 
 .pipe-dash-arrows {
-  visibility: hidden;
+  display: none;
   pointer-events: none;
 }
 
 .diagram-scene[data-line-style="arrow"] .pipe-dash-arrows {
-  visibility: visible;
+  display: inline;
 }
 
 .pipe-dash-arrow {
