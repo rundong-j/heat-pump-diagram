@@ -56,10 +56,16 @@ const SIMPLE_BOX_RV_WIDTH = 132;
 /** Discharge / suction stub offset from the RV center (canonical indoor-left). */
 const SIMPLE_BOX_RV_STUB = 24;
 const SIMPLE_BOX_RV_PORT_PAD = 16;
+const COMPRESSOR_TRAP_HALF_WIDTH = 22;
+const COMPRESSOR_TRAP_LEFT_HALF = 20;
+const COMPRESSOR_TRAP_RIGHT_HALF = 13;
 /** Icon 4-way: indoor / outdoor ports sit this far from the suction (center) port. */
 const ICON_RV_PORT = 34;
-/** Icon 4-way: discharge riser, screen-right of the unflipped compressor (clears the caption). */
-const ICON_RV_DISCHARGE_OFFSET = 68;
+/** Horizontal suction/discharge visible on each side of the centered compressor. */
+const ICON_RV_PIPE_STUB = 28;
+/** Icon 4-way: discharge riser, screen-right of the unflipped compressor. */
+const ICON_RV_DISCHARGE_OFFSET =
+  COMPRESSOR_TRAP_HALF_WIDTH * 2 + ICON_RV_PIPE_STUB * 2;
 /** Icon 4-way: compressor discharge enters the top port this far above the vapor line. */
 const ICON_RV_DIN = 42;
 /** Icon 4-way: high-pressure chamber path above the vapor line. */
@@ -67,9 +73,6 @@ const ICON_RV_CHAMBER = 28;
 /** Icon 4-way: sliding suction U (canoe) above the vapor line. */
 const ICON_RV_SLIDE = 16;
 const ICON_RV_PORT_PAD = 16;
-const COMPRESSOR_TRAP_HALF_WIDTH = 22;
-const COMPRESSOR_TRAP_LEFT_HALF = 20;
-const COMPRESSOR_TRAP_RIGHT_HALF = 13;
 const EXPANSION_SYMBOL_HALF_WIDTH = 16;
 const EXPANSION_SYMBOL_HALF_HEIGHT = 13;
 const INDOOR_COIL_ROWS = 7;
@@ -77,12 +80,17 @@ const INDOOR_COIL_CORNER_STUB = 16;
 const INDOOR_COIL_SEGMENTS = INDOOR_COIL_ROWS * 2 + 1;
 const INDOOR_COIL_RUN_WIDTH = SIMPLE_BOX_HEIGHT;
 const INDOOR_COIL_SPAN = SIMPLE_BOX_WIDTH;
-/** Horizontal air-flow inbound approach past each coil edge (icon). */
-const INDOOR_COIL_AIR_EXT = INDOOR_COIL_SPAN / 2;
-/** Extra outbound travel used only for a slow destination fade (~2s at particle speed). */
-const INDOOR_COIL_AIR_FADE_OUT = 120;
-/** Icon coil labels: below air-flow (cy), above bottom refrigerant turn. */
-const ICON_COIL_LABEL_Y_OFFSET = INDOOR_COIL_SPAN / 2 - 22;
+/** Canonical indoor-left house-body outer wall (screen-right when indoor is right). */
+const HOUSE_BODY_OUTER_X = 48;
+/** Horizontal air-flow: stay inside the viewport after the outdoor coil (icon). */
+const ICON_AIR_EDGE_MARGIN = 20;
+/** Stop indoor outbound this far inside the house outer wall (icon). */
+const ICON_AIR_WALL_INSET = 8;
+/** Fade the last stretch of icon outbound so the dart dissolves before the wall. */
+const ICON_AIR_WALL_FADE = 36;
+/** Icon coil labels: outer top corner of the winding stack. */
+const ICON_COIL_LABEL_X_PAD = 8;
+const ICON_COIL_LABEL_Y_OFFSET = -(INDOOR_COIL_SPAN / 2) + INDOOR_COIL_CORNER_STUB;
 
 /** X along a simple-box coil. Fraction 0 is the left edge, 1 is the right. */
 function boxXAtFraction(centerX: number, fraction: number): number {
@@ -486,9 +494,12 @@ function simpleBoxLayout(
     cool,
     indoorCoilSegments,
     outdoorCoilSegments,
-    indoorCoil: { x: indoorCx, y: mid },
-    outdoorCoil: { x: outdoorCx, y: mid },
-    compressor: { x: machineX, y: showReversingValve ? mid : top },
+    indoorCoil: { x: iconCoils ? indoorPipe : indoorCx, y: mid },
+    outdoorCoil: { x: iconCoils ? outdoorPipe : outdoorCx, y: mid },
+    compressor: {
+      x: iconRv ? Math.round((iconRv.midX + iconRv.disX) / 2) : machineX,
+      y: showReversingValve ? mid : top,
+    },
     expansion: { x: machineX, y: bot },
     reversingValve: { x: machineX, y: iconRv ? iconRv.dInY : top },
     arrows: simpleBoxArrows({
@@ -774,6 +785,80 @@ function airFlowFadeDefs(): m.Vnode {
   ]);
 }
 
+type IconAirTrack = {
+  xTail: number;
+  xInEnd: number;
+  xOutStart: number;
+  xTip: number;
+};
+
+function coilHorizontalEdges(coil: Point): {
+  left: number;
+  right: number;
+  onLeft: boolean;
+} {
+  const half = INDOOR_COIL_RUN_WIDTH / 2;
+  return {
+    left: coil.x - half,
+    right: coil.x + half,
+    onLeft: coil.x < ZONE_WIDTH,
+  };
+}
+
+/**
+ * Outdoor inbound starts at the midpoint between the outdoor coil's inner edge
+ * and the suction column. Indoor inbound matches that length. Indoor outbound
+ * stops just inside the house outer wall; outdoor outbound matches that length.
+ */
+function iconAirFlowTracks(
+  indoorCoil: Point,
+  outdoorCoil: Point,
+  suctionX: number,
+): { indoor: IconAirTrack; outdoor: IconAirTrack } {
+  const indoor = coilHorizontalEdges(indoorCoil);
+  const outdoor = coilHorizontalEdges(outdoorCoil);
+  const outdoorInner = outdoor.onLeft ? outdoor.right : outdoor.left;
+  const outdoorOuter = outdoor.onLeft ? outdoor.left : outdoor.right;
+  const outdoorTail = (outdoorInner + suctionX) / 2;
+  const inboundLen = Math.abs(outdoorInner - outdoorTail);
+
+  const indoorInner = indoor.onLeft ? indoor.right : indoor.left;
+  const indoorOuter = indoor.onLeft ? indoor.left : indoor.right;
+  const indoorTail = indoor.onLeft
+    ? indoorInner + inboundLen
+    : indoorInner - inboundLen;
+
+  const houseWall = indoor.onLeft
+    ? HOUSE_BODY_OUTER_X
+    : VIEWPORT_WIDTH - HOUSE_BODY_OUTER_X;
+  const indoorTip = indoor.onLeft
+    ? houseWall + ICON_AIR_WALL_INSET
+    : houseWall - ICON_AIR_WALL_INSET;
+  const outboundLen = Math.abs(indoorOuter - indoorTip);
+  const outdoorTip = Math.min(
+    VIEWPORT_WIDTH - ICON_AIR_EDGE_MARGIN,
+    Math.max(
+      ICON_AIR_EDGE_MARGIN,
+      outdoor.onLeft ? outdoorOuter - outboundLen : outdoorOuter + outboundLen,
+    ),
+  );
+
+  return {
+    indoor: {
+      xTail: indoorTail,
+      xInEnd: indoorInner,
+      xOutStart: indoorOuter,
+      xTip: indoorTip,
+    },
+    outdoor: {
+      xTail: outdoorTail,
+      xInEnd: outdoorInner,
+      xOutStart: outdoorOuter,
+      xTip: outdoorTip,
+    },
+  };
+}
+
 /**
  * Uniform circular ring-section arrow on the outside of the refrigerant loop.
  * Left coil: 1/3 mark, bulge right `)` . Right coil: 2/3 mark, bulge left `(` .
@@ -788,9 +873,10 @@ function coilAirFlow(opts: {
   kind: AirFlowKind;
   indoor?: boolean;
   icon?: boolean;
+  iconTrack?: IconAirTrack;
 }): m.Vnode {
-  if (opts.icon) {
-    return coilAirFlowIcon(opts);
+  if (opts.icon && opts.iconTrack) {
+    return coilAirFlowIcon({ ...opts, iconTrack: opts.iconTrack });
   }
   return coilAirFlowBox(opts);
 }
@@ -956,53 +1042,42 @@ function coilAirFlowBox(opts: {
   );
 }
 
-/** Straight horizontal darts through the icon coil stack (52×140). */
+/** Straight horizontal darts through the icon coil stack (52×140), inside → outside. */
 function coilAirFlowIcon(opts: {
   coil: Point;
   onLeft: boolean;
   kind: AirFlowKind;
   indoor?: boolean;
+  iconTrack: IconAirTrack;
 }): m.Vnode {
-  const { coil, onLeft, kind, indoor } = opts;
+  const { coil, kind, indoor, iconTrack } = opts;
   const yMid = coil.y;
-  const coilLeft = coil.x - INDOOR_COIL_RUN_WIDTH / 2;
-  const coilRight = coil.x + INDOOR_COIL_RUN_WIDTH / 2;
-  const ext = INDOOR_COIL_AIR_EXT;
-  const destExt = INDOOR_COIL_AIR_EXT + INDOOR_COIL_AIR_FADE_OUT;
-  const goingRight = onLeft;
-  const xTail = goingRight ? coilLeft - ext : coilRight + ext;
-  const xTip = goingRight ? coilRight + destExt : coilLeft - destExt;
-  const xInEnd = goingRight ? coilLeft : coilRight;
-  const xOutStart = goingRight ? coilRight : coilLeft;
-  const gap = Math.abs(coilRight - coilLeft);
+  const { xTail, xInEnd, xOutStart, xTip } = iconTrack;
+  const goingRight = xTip > xTail;
+  const gap = Math.abs(xOutStart - xInEnd);
+  const inboundLen = Math.abs(xInEnd - xTail);
+  const outboundLen = Math.abs(xTip - xOutStart);
+  const fadeOut = Math.min(
+    ICON_AIR_WALL_FADE,
+    Math.max(AIR_FLOW_HEAD_HEIGHT, outboundLen * 0.45),
+  );
+  const opaqueOut = Math.max(outboundLen - fadeOut, AIR_FLOW_HEAD_HEIGHT);
   const hs = AIR_FLOW_SHAFT / 2;
   const hw = AIR_FLOW_HEAD_WIDTH / 2;
   const hl = AIR_FLOW_HEAD_HEIGHT;
   const r = roundCoord;
 
-  function horizontalArrowPath(x0: number, x1: number): string {
-    if (goingRight) {
-      const base = x1 - hl;
-      return [
-        `M${r(x0)},${r(yMid - hs)}`,
-        `H${r(base)}`,
-        `L${r(base)},${r(yMid - hw)}`,
-        `L${r(x1)},${r(yMid)}`,
-        `L${r(base)},${r(yMid + hw)}`,
-        `L${r(base)},${r(yMid + hs)}`,
-        `H${r(x0)}`,
-        "Z",
-      ].join(" ");
-    }
-    const base = x0 + hl;
+  function horizontalArrowPath(fromX: number, toX: number): string {
+    const dir = toX >= fromX ? 1 : -1;
+    const base = toX - dir * hl;
     return [
-      `M${r(x1)},${r(yMid - hs)}`,
+      `M${r(fromX)},${r(yMid - hs)}`,
       `H${r(base)}`,
       `L${r(base)},${r(yMid - hw)}`,
-      `L${r(x0)},${r(yMid)}`,
+      `L${r(toX)},${r(yMid)}`,
       `L${r(base)},${r(yMid + hw)}`,
       `L${r(base)},${r(yMid + hs)}`,
-      `H${r(x1)}`,
+      `H${r(fromX)}`,
       "Z",
     ].join(" ");
   }
@@ -1027,7 +1102,7 @@ function coilAirFlowIcon(opts: {
   const outboundPath = horizontalCenterline(xOutStart, xTip);
   const inboundClip = horizontalShaftClip(xTail, xInEnd);
   const outboundClip = horizontalShaftClip(xOutStart, xTip);
-  const xStaticTip = goingRight ? coilRight + ext : coilLeft - ext;
+  const xStaticTip = goingRight ? xOutStart + opaqueOut : xOutStart - opaqueOut;
   const arrowPath = horizontalArrowPath(xTail, xStaticTip);
 
   const { gradientId, groupKey, tailStop, tipStop } = airFlowKindMeta(kind);
@@ -1039,7 +1114,7 @@ function coilAirFlowIcon(opts: {
     {
       key: groupKey,
       "data-air-gap": String(gap),
-      "data-air-window": String(ext * 2 + gap),
+      "data-air-window": String(inboundLen + gap + opaqueOut),
     },
     [
       m("defs", { key: `${groupKey}-defs` }, [
@@ -1079,7 +1154,7 @@ function coilAirFlowIcon(opts: {
           fadeStopsAlong(
             Math.abs(xTip - xTail),
             AIR_FLOW_HEAD_HEIGHT,
-            INDOOR_COIL_AIR_FADE_OUT,
+            fadeOut,
           ),
         ),
         m(
@@ -1138,7 +1213,7 @@ function houseContext(flip: boolean): m.Children {
     },
     [
       m("path.house-body", {
-        d: "M48,188 H412 V492 H48 Z",
+        d: `M${HOUSE_BODY_OUTER_X},188 H412 V492 H${HOUSE_BODY_OUTER_X} Z`,
       }),
       m("path.house-roof", {
         d: "M36,188 L230,78 L424,188 Z",
@@ -1235,17 +1310,17 @@ function iconCoilCaption(
   text: string,
 ): m.Vnode {
   const onLeft = coil.x < ZONE_WIDTH;
-  const x = onLeft
-    ? coil.x + SIMPLE_BOX_WIDTH / 2 + 12
-    : coil.x - SIMPLE_BOX_WIDTH / 2 - 12;
+  const outerX = onLeft
+    ? coil.x - INDOOR_COIL_RUN_WIDTH / 2 - ICON_COIL_LABEL_X_PAD
+    : coil.x + INDOOR_COIL_RUN_WIDTH / 2 + ICON_COIL_LABEL_X_PAD;
   return m(
     "text.box-label",
     {
       key: `${id}Label`,
       "data-component": id,
-      x,
+      x: outerX,
       y: coil.y + ICON_COIL_LABEL_Y_OFFSET,
-      "text-anchor": onLeft ? "start" : "end",
+      "text-anchor": onLeft ? "end" : "start",
       dy: "0.35em",
     },
     text,
@@ -1446,6 +1521,14 @@ export function minisplitScene(config: DiagramConfig): m.Children {
     indoorRole === "condenser" ? circuit.indoorCoil : circuit.outdoorCoil;
   const evaporatorCoil =
     indoorRole === "evaporator" ? circuit.indoorCoil : circuit.outdoorCoil;
+  const iconTracks =
+    config.componentStyle === "icon"
+      ? iconAirFlowTracks(
+          circuit.indoorCoil,
+          circuit.outdoorCoil,
+          circuit.expansion.x,
+        )
+      : null;
   const readings = CYCLE_READINGS[config.mode];
   const flip = config.indoorSide === "right";
   const placeX = (x: number) => (flip ? flipX(x) : x);
@@ -1649,6 +1732,10 @@ export function minisplitScene(config: DiagramConfig): m.Children {
         kind: "reject",
         indoor: condenserCoil === circuit.indoorCoil,
         icon: config.componentStyle === "icon",
+        iconTrack:
+          condenserCoil === circuit.indoorCoil
+            ? iconTracks?.indoor
+            : iconTracks?.outdoor,
       }),
       coilAirFlow({
         coil: evaporatorCoil,
@@ -1657,6 +1744,10 @@ export function minisplitScene(config: DiagramConfig): m.Children {
         kind: "absorb",
         indoor: evaporatorCoil === circuit.indoorCoil,
         icon: config.componentStyle === "icon",
+        iconTrack:
+          evaporatorCoil === circuit.indoorCoil
+            ? iconTracks?.indoor
+            : iconTracks?.outdoor,
       }),
     ]),
 
