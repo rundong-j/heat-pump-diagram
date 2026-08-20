@@ -33,9 +33,7 @@ type CircuitLayout = {
   warm: string;
   cold: string;
   cool: string;
-  indoorCoilPath: string;
   indoorCoilSegments: string[];
-  outdoorCoilPath: string;
   outdoorCoilSegments: string[];
   indoorCoil: Point;
   outdoorCoil: Point;
@@ -181,9 +179,7 @@ function mirrorLayout(layout: CircuitLayout): CircuitLayout {
     warm: flipPath(layout.warm),
     cold: flipPath(layout.cold),
     cool: flipPath(layout.cool),
-    indoorCoilPath: flipPath(layout.indoorCoilPath),
     indoorCoilSegments: layout.indoorCoilSegments.map(flipPath),
-    outdoorCoilPath: flipPath(layout.outdoorCoilPath),
     outdoorCoilSegments: layout.outdoorCoilSegments.map(flipPath),
     indoorCoil: flipPoint(layout.indoorCoil),
     outdoorCoil: flipPoint(layout.outdoorCoil),
@@ -359,17 +355,6 @@ function indoorCoilPieces(
   return pieces;
 }
 
-function joinCoilPath(pieces: string[]): string {
-  if (pieces.length === 0) {
-    return "M0,0";
-  }
-  const rest = pieces
-    .slice(1)
-    .map((piece) => piece.replace(/^M[-.\d]+,[-.\d]+\s*/, ""))
-    .join(" ");
-  return `${pieces[0]} ${rest}`;
-}
-
 function simpleBoxLayout(
   heating: boolean,
   flip: boolean,
@@ -414,16 +399,12 @@ function simpleBoxLayout(
   let warm: string;
   let cold: string;
   let cool: string;
-  let indoorCoilPath: string;
   let indoorCoilSegments: string[];
-  let outdoorCoilPath: string;
   let outdoorCoilSegments: string[];
 
   if (iconCoils) {
     indoorCoilSegments = indoorPieces;
-    indoorCoilPath = joinCoilPath(indoorPieces);
     outdoorCoilSegments = outdoorPieces;
-    outdoorCoilPath = joinCoilPath(outdoorPieces);
     const condX = heating ? indoorPipe : outdoorPipe;
     const evapX = heating ? outdoorPipe : indoorPipe;
     const leftX = machineX - ICON_RV_HALF;
@@ -443,9 +424,7 @@ function simpleBoxLayout(
       ? `M${disX},${mid} V${valveBot} H${rvHotTop} V${top} H${condPipe} V${bot} H${evapPipe} V${top} H${rvCoolTop} V${valveBot} H${sucX} V${mid} H${disX} Z`
       : `M${machineX},${top} H${outdoorPipe} V${bot} H${indoorPipe} V${top} H${machineX} Z`;
   } else {
-    indoorCoilPath = "M0,0";
     indoorCoilSegments = emptyCoilSegments();
-    outdoorCoilPath = "M0,0";
     outdoorCoilSegments = emptyCoilSegments();
     loop = showReversingValve
       ? `M${disX},${mid} V${top} H${condPipe} V${bot} H${evapPipe} V${top} H${sucX} V${mid} H${disX} Z`
@@ -466,9 +445,7 @@ function simpleBoxLayout(
     warm,
     cold,
     cool,
-    indoorCoilPath,
     indoorCoilSegments,
-    outdoorCoilPath,
     outdoorCoilSegments,
     indoorCoil: { x: indoorCx, y: mid },
     outdoorCoil: { x: outdoorCx, y: mid },
@@ -611,6 +588,64 @@ function roundCoord(n: number): number {
 }
 
 type AirFlowKind = "reject" | "absorb";
+
+function airFlowKindMeta(kind: AirFlowKind): {
+  gradientId: string;
+  groupKey: string;
+  tailStop: string;
+  tipStop: string;
+} {
+  if (kind === "reject") {
+    return {
+      gradientId: "air-flow-condenser-gradient",
+      groupKey: "air-flow-condenser",
+      tailStop: "air-flow-grad-warm",
+      tipStop: "air-flow-grad-hot",
+    };
+  }
+  return {
+    gradientId: "air-flow-evaporator-gradient",
+    groupKey: "air-flow-evaporator",
+    tailStop: "air-flow-grad-cool",
+    tipStop: "air-flow-grad-cold",
+  };
+}
+
+function airFlowDartGroup(
+  kind: AirFlowKind,
+  groupKey: string,
+  part: "in" | "out",
+  pathD: string,
+  maskUrl: string,
+): m.Vnode {
+  const partClipId = `air-flow-clip-${kind}-${part}`;
+  return m(
+    `g.air-flow-motion.air-flow-motion-${kind}-${part}`,
+    {
+      key: `${groupKey}-motion-${part}`,
+      mask: maskUrl,
+    },
+    [
+      m(
+        `g.air-flow-stem-clip.air-flow-stem-clip-${kind}-${part}`,
+        {
+          key: `${groupKey}-stem-clip-${part}`,
+          "clip-path": `url(#${partClipId})`,
+        },
+        m(`path.air-flow-stem.air-flow-stem-${kind}-${part}`, {
+          key: `${groupKey}-stem-${part}`,
+          d: pathD,
+          fill: "none",
+        }),
+      ),
+      m(`polygon.air-flow-head.air-flow-head-${kind}-${part}`, {
+        key: `${groupKey}-head-${part}`,
+        points: "0,0 0,0 0,0",
+        visibility: "hidden",
+      }),
+    ],
+  );
+}
 
 function fadeStopsAlong(
   span: number,
@@ -819,48 +854,9 @@ function coilAirFlowBox(opts: {
   const inboundClip = shaftClipBetween(thetaStart, thetaInEnd);
   const outboundClip = shaftClipBetween(thetaOutStart, thetaTip);
 
-  const gradientId =
-    kind === "reject"
-      ? "air-flow-condenser-gradient"
-      : "air-flow-evaporator-gradient";
-  const groupKey =
-    kind === "reject" ? "air-flow-condenser" : "air-flow-evaporator";
-  const tailStop =
-    kind === "reject" ? "air-flow-grad-warm" : "air-flow-grad-cool";
-  const tipStop =
-    kind === "reject" ? "air-flow-grad-hot" : "air-flow-grad-cold";
+  const { gradientId, groupKey, tailStop, tipStop } = airFlowKindMeta(kind);
   const yTail = pointUp ? loopBot : loopTop;
   const yTipGrad = pointUp ? loopTop : loopBot;
-
-  function dartGroup(part: "in" | "out", pathD: string): m.Vnode {
-    const partClipId = `air-flow-clip-${kind}-${part}`;
-    return m(
-      `g.air-flow-motion.air-flow-motion-${kind}-${part}`,
-      {
-        key: `${groupKey}-motion-${part}`,
-        mask: "url(#air-flow-fade-mask)",
-      },
-      [
-        m(
-          `g.air-flow-stem-clip.air-flow-stem-clip-${kind}-${part}`,
-          {
-            key: `${groupKey}-stem-clip-${part}`,
-            "clip-path": `url(#${partClipId})`,
-          },
-          m(`path.air-flow-stem.air-flow-stem-${kind}-${part}`, {
-            key: `${groupKey}-stem-${part}`,
-            d: pathD,
-            fill: "none",
-          }),
-        ),
-        m(`polygon.air-flow-head.air-flow-head-${kind}-${part}`, {
-          key: `${groupKey}-head-${part}`,
-          points: "0,0 0,0 0,0",
-          visibility: "hidden",
-        }),
-      ],
-    );
-  }
 
   const gapLen = radius * Math.abs(thetaOutStart - thetaInEnd);
 
@@ -914,8 +910,8 @@ function coilAirFlowBox(opts: {
       key: `${groupKey}-arrow`,
       d,
     }),
-    dartGroup("in", inboundPath),
-    dartGroup("out", outboundPath),
+    airFlowDartGroup(kind, groupKey, "in", inboundPath, "url(#air-flow-fade-mask)"),
+    airFlowDartGroup(kind, groupKey, "out", outboundPath, "url(#air-flow-fade-mask)"),
     ],
   );
 }
@@ -994,48 +990,9 @@ function coilAirFlowIcon(opts: {
   const xStaticTip = goingRight ? coilRight + ext : coilLeft - ext;
   const arrowPath = horizontalArrowPath(xTail, xStaticTip);
 
-  const gradientId =
-    kind === "reject"
-      ? "air-flow-condenser-gradient"
-      : "air-flow-evaporator-gradient";
-  const groupKey =
-    kind === "reject" ? "air-flow-condenser" : "air-flow-evaporator";
-  const tailStop =
-    kind === "reject" ? "air-flow-grad-warm" : "air-flow-grad-cool";
-  const tipStop =
-    kind === "reject" ? "air-flow-grad-hot" : "air-flow-grad-cold";
+  const { gradientId, groupKey, tailStop, tipStop } = airFlowKindMeta(kind);
   const fadeGradId = `${groupKey}-fade-grad-h`;
   const fadeMaskId = `${groupKey}-fade-mask-h`;
-
-  function dartGroup(part: "in" | "out", pathD: string): m.Vnode {
-    const partClipId = `air-flow-clip-${kind}-${part}`;
-    return m(
-      `g.air-flow-motion.air-flow-motion-${kind}-${part}`,
-      {
-        key: `${groupKey}-motion-${part}`,
-        mask: `url(#${fadeMaskId})`,
-      },
-      [
-        m(
-          `g.air-flow-stem-clip.air-flow-stem-clip-${kind}-${part}`,
-          {
-            key: `${groupKey}-stem-clip-${part}`,
-            "clip-path": `url(#${partClipId})`,
-          },
-          m(`path.air-flow-stem.air-flow-stem-${kind}-${part}`, {
-            key: `${groupKey}-stem-${part}`,
-            d: pathD,
-            fill: "none",
-          }),
-        ),
-        m(`polygon.air-flow-head.air-flow-head-${kind}-${part}`, {
-          key: `${groupKey}-head-${part}`,
-          points: "0,0 0,0 0,0",
-          visibility: "hidden",
-        }),
-      ],
-    );
-  }
 
   return m(
     `g.${groupKey}.air-flow-horizontal${indoor ? ".air-flow-indoor" : ".air-flow-outdoor"}`,
@@ -1124,8 +1081,8 @@ function coilAirFlowIcon(opts: {
         key: `${groupKey}-arrow`,
         d: arrowPath,
       }),
-      dartGroup("in", inboundPath),
-      dartGroup("out", outboundPath),
+      airFlowDartGroup(kind, groupKey, "in", inboundPath, `url(#${fadeMaskId})`),
+      airFlowDartGroup(kind, groupKey, "out", outboundPath, `url(#${fadeMaskId})`),
     ],
   );
 }
@@ -1232,6 +1189,29 @@ function overlayBadge(
   ]);
 }
 
+function iconCoilCaption(
+  id: "indoorCoil" | "outdoorCoil",
+  coil: Point,
+  text: string,
+): m.Vnode {
+  const onLeft = coil.x < ZONE_WIDTH;
+  const x = onLeft
+    ? coil.x + SIMPLE_BOX_WIDTH / 2 + 12
+    : coil.x - SIMPLE_BOX_WIDTH / 2 - 12;
+  return m(
+    "text.box-label",
+    {
+      key: `${id}Label`,
+      "data-component": id,
+      x,
+      y: coil.y + ICON_COIL_LABEL_Y_OFFSET,
+      "text-anchor": onLeft ? "start" : "end",
+      dy: "0.35em",
+    },
+    text,
+  );
+}
+
 function boxedEquipment(
   circuit: CircuitLayout,
   config: DiagramConfig,
@@ -1317,23 +1297,11 @@ function boxedEquipment(
           pulse: true,
         });
 
-  const iconCoilLabelY = (cy: number) => cy + ICON_COIL_LABEL_Y_OFFSET;
-  const indoorOnLeft = circuit.indoorCoil.x < ZONE_WIDTH;
-  const indoorLabelX = indoorOnLeft
-    ? circuit.indoorCoil.x + SIMPLE_BOX_WIDTH / 2 + 12
-    : circuit.indoorCoil.x - SIMPLE_BOX_WIDTH / 2 - 12;
   const indoorNode =
     indoor === "coil"
-      ? m(
-          "text.box-label",
-          {
-            key: "indoorCoilLabel",
-            "data-component": "indoorCoil",
-            x: indoorLabelX,
-            y: iconCoilLabelY(circuit.indoorCoil.y),
-            "text-anchor": indoorOnLeft ? "start" : "end",
-            dy: "0.35em",
-          },
+      ? iconCoilCaption(
+          "indoorCoil",
+          circuit.indoorCoil,
           coilLabel("indoor", indoorRole, config.coilLabels),
         )
       : componentBox({
@@ -1345,22 +1313,11 @@ function boxedEquipment(
           label: coilLabel("indoor", indoorRole, config.coilLabels),
         });
 
-  const outdoorOnLeft = circuit.outdoorCoil.x < ZONE_WIDTH;
-  const outdoorLabelX = outdoorOnLeft
-    ? circuit.outdoorCoil.x + SIMPLE_BOX_WIDTH / 2 + 12
-    : circuit.outdoorCoil.x - SIMPLE_BOX_WIDTH / 2 - 12;
   const outdoorNode =
     outdoor === "coil"
-      ? m(
-          "text.box-label",
-          {
-            key: "outdoorCoilLabel",
-            "data-component": "outdoorCoil",
-            x: outdoorLabelX,
-            y: iconCoilLabelY(circuit.outdoorCoil.y),
-            "text-anchor": outdoorOnLeft ? "start" : "end",
-            dy: "0.35em",
-          },
+      ? iconCoilCaption(
+          "outdoorCoil",
+          circuit.outdoorCoil,
           coilLabel("outdoor", outdoorRole, config.coilLabels),
         )
       : componentBox({

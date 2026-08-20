@@ -22,7 +22,7 @@ If the UI looks stale after edits, kill stray Vite listeners on 5173–5180 and 
 | 2+++ | Four-color refrigerant lines | Done. ColorBrewer RdYlBu: hot / warm / cold / cool. Hot and cold stop at condenser / evaporator centers; warm and cool continue from there. |
 | 2++++ | Line appearance HUD | Done. **Line style** Solid \| **Dashed (default)** \| Arrow. **Line color** **Temperature-based (default)** \| Constant (house-outline stroke). **Line width & spacing** Constant \| **Pressure-based (default)**. |
 | 3 | Ducted-split layout; none vs house background | **House & weather done** (default). Ducted not started — Type stays disabled. Background tile: `none` (plain white) \| `house` (zones + weather + outline). |
-| 4 | Icon / sketch / cross-section art swap | Partial. Tile **enabled**; default **simple box**. Abstract icon currently clones the simple-box layout and boxes (`boxedEquipment`); previous geometric units / `iconLayout` / `reversingValveLayout` are commented in place. `sketch` and `crossSection` stay skipped. |
+| 4 | Icon / sketch / cross-section art swap | Partial. Tile **enabled**; default **simple box**. Abstract icon shares the simple-box loop and paints schematic coils, compressor trapezoid, expansion triangles, and line-drawn reversing valve. Parked geometric units / `iconLayout` / `reversingValveLayout` stay commented. `sketch` and `crossSection` stay skipped. |
 | 5 | URL-serialized config, presenter chrome, export | **JPEG screenshot done** (`src/ui/screenshot.ts`, 3840×2160). URL config and SVG/PNG fallback not started. |
 | 6 | PowerPoint content add-in host | Not started. Host split sketched (`src/hosts/web.ts` only). |
 
@@ -72,7 +72,7 @@ src/
 3. **Indoor** (Left side \| Right side) · **Theme** (light bulb / moon) · **Font size** (Aa, default XL)
 4. **Line style** (Solid \| Dashed \| Arrow) · **Line color** (Temperature-based \| Constant) · **Line width & spacing** (Constant \| Pressure-based)
 
-**Overlays:** Labels · Pressure · Temperature · Phase · Direction · **Heat transfer**. Heat transfer stays mounted; CSS `[data-heat-transfer]` plus `is-hidden` show canned `heatFlowLabel()` text in `layer-heat-transfer` (Heat absorbed / Heat rejected, centered under each coil) and air-flow in `layer-air-flow` (behind equipment). Enabling it insets the simple-box loop (left coil 2/3, right coil 1/3); unchecking restores centered risers and rebuilds flow via `topologyKey`. Each coil keeps a filled ring-section (reduced-motion pose) plus two solid darts on one virtual track (inbound + `data-air-gap` + outbound). Dart length equals that track, so when the outbound head reaches the far end the inbound tail is at the outer start (one long arrow for screenshots). Inbound slides into the box; outbound emerges from the other edge after the gap, same speed, next temperature color. One shared `#air-flow-fade-mask` fades the loop top/bottom only. Pause freezes mid-draw. `prefers-reduced-motion` hides `.air-flow-motion` and shows the filled arrow. Independent of Labels, of simple-box hiding `.layer-labels`, and of Line color (air paths are not `.pipe`).
+**Overlays:** Labels · Pressure · Temperature · Phase · Direction · **Heat transfer**. Heat transfer stays mounted; CSS `[data-heat-transfer]` plus `is-hidden` show canned `heatFlowLabel()` text in `layer-heat-transfer` (Heat absorbed / Heat rejected, centered under each coil) and air-flow in `layer-air-flow` (above equipment). Enabling it insets the simple-box loop (left coil 2/3, right coil 1/3); unchecking restores centered risers and rebuilds flow via `topologyKey`. Each coil keeps a filled ring-section (reduced-motion pose) plus two solid darts on one virtual track (inbound + `data-air-gap` + outbound). Dart length equals that track, so when the outbound head reaches the far end the inbound tail is at the outer start (one long arrow for screenshots). Inbound slides into the box; outbound emerges from the other edge after the gap, same speed, next temperature color. One shared `#air-flow-fade-mask` fades the loop top/bottom only. Pause freezes mid-draw. `prefers-reduced-motion` hides `.air-flow-motion` and shows the filled arrow. Independent of Labels, of simple-box hiding `.layer-labels`, and of Line color (air paths are not `.pipe`).
 
 **Layers** use `layer(name, children)` in `diagram/layer.ts`. That helper always returns keyed `<g class="layer-*">` with matching `data-role`. Groups **stay mounted**. Visibility is CSS `data-*` plus a few `classList` toggles in `SceneAnimation`. Do not conditionally create/destroy equipment groups.
 
@@ -94,7 +94,7 @@ Heating reverses arrow rotations (normalize `% 360` before `flipRotation`). `mir
 
 **House & weather:** both always in the DOM. Shown only when `data-background="house"` (plain white + no weather/zones/outline when `none`). Weather: `[data-mode="heating"|"cooling"]` on `.weather-snow` / `.weather-sun`. Canonical indoor-left house body is `M48,188 H412 V492 H48 Z` (floor at **492** so heat-transfer labels under each coil box on a shared baseline **y=475** stay aligned and the indoor label sits inside the house with margin). Heat-transfer text uses already-mirrored `circuit.indoorCoil.x` / `circuit.outdoorCoil.x` (canonical `145` / `840`). Roof `M36,188 L230,78 L424,188 Z`. `houseContext(flip)` mirrors with `translate(VIEWPORT_WIDTH 0) scale(-1 1)`.
 
-Compressor pulse: `transformOrigin: "50% 50%"`. Fan blades still rotate around `"0px 0px"`. Particles stay white. Heat-transfer overlay is enabled (default **on**); canned “Heat absorbed” / “Heat rejected” labels follow coil roles. Air-flow stays mounted in `layer-air-flow` (behind equipment). `airFlowFadeDefs()` owns the shared Y-mask. Dart color is `--air-flow-color` on `.air-flow-motion-{reject|absorb}-{in|out}`. A dedicated GSAP timeline (`airFlow`, same pause/speed as the rest, paused when the overlay is off) draws two darts per coil on `.air-flow-stem-{reject|absorb}-{in|out}`, clipped to a constant-width shaft with **flat radial ends**. Dart length equals the virtual track. Travel speed is particle speed (`AIR_FLOW_SPEED_VS_PARTICLES = 1`, twice dash speed). Place the head base and tip on the stem centerline (`getPointAtLength`); do not build the triangle off a tip-only tangent (that wobbles on the arc). Do not remount `layer-air-flow`.
+Compressor pulse: `transformOrigin: "50% 50%"`. Fan blades still rotate around `"0px 0px"`. Particles stay white. Heat-transfer overlay is enabled (default **on**); canned “Heat absorbed” / “Heat rejected” labels follow coil roles. Air-flow stays mounted in `layer-air-flow` (above equipment). `airFlowFadeDefs()` owns the shared Y-mask. Dart color is `--air-flow-color` on `.air-flow-motion-{reject|absorb}-{in|out}`. A dedicated GSAP timeline (`airFlow`, same pause/speed as the rest, paused when the overlay is off) draws two darts per coil on `.air-flow-stem-{reject|absorb}-{in|out}`, clipped to a constant-width shaft with **flat radial ends**. Dart length equals the virtual track. Travel speed is particle speed (`AIR_FLOW_SPEED_VS_PARTICLES = 1`, twice dash speed). Place the head base and tip on the stem centerline (`getPointAtLength`); do not build the triangle off a tip-only tangent (that wobbles on the arc). Do not remount `layer-air-flow`.
 
 Viewport: `VIEWPORT_WIDTH` / `VIEWPORT_HEIGHT` / `VIEWBOX` in `diagram/viewport.ts` (960×540). Scene, layout mirroring/zones, and 4K screenshot math all import it. HUD glyphs go through `hudIcon()` in `ui/hudIcon.ts`.
 
@@ -105,7 +105,7 @@ Screenshot: clones `.diagram-scene`, inlines CSS variables + stylesheets, raster
 1. **Mithril vs GSAP:** SVG scene created once (`key: "diagram-scene"`). Destroying SVG nodes kills tweens. Prefer CSS / `data-*` / in-place attribute patches. Icon and simple-box equipment must **both** stay in the DOM. Particles stay in the DOM when dashed.
 2. **Fragment keys:** children of one parent must **all** have keys or **none** do.
 3. **Do not put labels inside a group that inherits `stroke`.** Box labels: `fill: var(--label); stroke: none`.
-4. **Simple box vs overlay labels:** `[data-component-style="simpleBox"]` and `[data-component-style="icon"]` hide `.layer-labels`. Heat-transfer labels stay in `layer-heat-transfer` and are **not** hidden by boxed styles. Air-flow stays in `layer-air-flow` (behind equipment) and uses the same `data-heat-transfer` / `is-hidden` visibility. Prefer CSS on `data-component-style` / `.labels-off` / `.hide-reversing-valve` / `data-background` / `data-line-style` / `data-line-color` / `data-line-width` / `data-heat-transfer` / mode-based weather.
+4. **Simple box vs overlay labels:** `[data-component-style="simpleBox"]` and `[data-component-style="icon"]` hide `.layer-labels`. Heat-transfer labels stay in `layer-heat-transfer` and are **not** hidden by boxed styles. Air-flow stays in `layer-air-flow` (above equipment) and uses the same `data-heat-transfer` / `is-hidden` visibility. Prefer CSS on `data-component-style` / `.labels-off` / `.hide-reversing-valve` / `data-background` / `data-line-style` / `data-line-color` / `data-line-width` / `data-heat-transfer` / mode-based weather.
 5. **`prefers-reduced-motion`:** no particles; static overlay arrows stay visible; heat-transfer stem/head hidden (filled ring-section stays); dashed/arrow pipes stay static (no offset tween).
 6. **Arrow reverse + mirror:** normalize rotations after heating reverse or indoor-right flip.
 7. **Icon equipment** currently shares simple-box box positions (`circuit.*`, already mirrored). Parked geometric icon art used canonical indoor-left coords inside a flip group.
@@ -116,9 +116,24 @@ Screenshot: clones `.diagram-scene`, inlines CSS variables + stylesheets, raster
 ## Remaining work (priority)
 
 1. **Ducted layout.** Second layout sharing loop topology. Split `minisplit.ts` / layout registry before copying a fourth path set. Re-enable Type when ready.
-2. **Phase 4 — art.** Rebuild abstract icon from `g.icon-equipment` (currently a simple-box clone). Then sketch SVGs with shared pipe anchors; cross-section later. Mark those style options `available` when ready.
+2. **Phase 4 — art.** Finish remaining icon equipment (outdoor fan, etc. still unused). Then sketch SVGs with shared pipe anchors; cross-section later. Mark those style options `available` when ready.
 3. **Phase 5 — share/present.** Serialize `DiagramConfig` to the URL; compact presenter chrome; SVG/PNG export fallback (JPEG screenshot already works).
 4. **Phase 6 — PowerPoint.** Second HTML entry, add-in-only XML manifest (`ContentApp`), HTTPS host, `Office.context.document.settings` + `saveAsync` on every change, `getActiveViewAsync` (web slideshow is a new session so `ActiveViewChanged` will not fire). Controls in the content frame only. Pad top-right for the Office personality menu.
+
+## Deferred cleanup (do not rush)
+
+Safe internals already done: dropped unused joined coil `d` strings, shared air-flow dart/kind helpers, cached pipe nodes and path lengths for dash/air-flow ticks.
+
+Leave these until they unblock a feature:
+
+- **Split `minisplit.ts`.** Air-flow, house/weather, and equipment could be modules, but keep `layer()` mount order and fragment keys intact. Best done when adding a ducted layout registry.
+- **Delete parked icon comments** (`iconLayout`, `reversingValveLayout`, `fanIcon`, old units) only after icon art is finished or explicitly dropped.
+- **Keep both equipment sets mounted.** Hiding one via CSS is required so GSAP/Mithril do not remount the SVG.
+- **True along-stroke coil gradient.** SVG `linearGradient` is spatial; `color-mix` segments are the current stand-in. A path-length gradient needs extra geometry or a different renderer.
+- **Simple-box air-flow destination fade.** Icon coils already stretch the exit mask; the vertical 16%/84% loop mask is unchanged.
+- **Skip tweens on hidden equipment.** `.compressor-pulse` is queried for both icon and simple-box; the hidden set still ticks. Tiny CPU, leave unless profiling says otherwise.
+- **Precompute dash-arrow samples.** `getPointAtLength` still runs every dash frame when line style is arrow. Caching samples per topology would help long paths only.
+- **CSS pressure/coil selectors.** Indoor vs outdoor segment rules are already grouped; further merging is cosmetic.
 
 ## Out of scope until after V2 shell
 

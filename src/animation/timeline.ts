@@ -19,6 +19,55 @@ const AIR_FLOW_HEAD_LENGTH = 24;
 const AIR_FLOW_HEAD_WIDTH = 42;
 const AIR_FLOW_KINDS = ["reject", "absorb"] as const;
 
+type DashTrack = {
+  path: SVGPathElement;
+  marks: SVGPolygonElement[];
+  pathLen: number;
+  high: boolean;
+};
+
+type AnimCache = {
+  svg: SVGSVGElement;
+  pipes: Element[];
+  dashTracks: DashTrack[];
+  coils: Array<CoilAirEls | null>;
+};
+
+let animCache: AnimCache | null = null;
+
+function refreshAnimCache(svg: SVGSVGElement): void {
+  animCache = {
+    svg,
+    pipes: [...svg.querySelectorAll(".pipe")],
+    dashTracks: PIPE_COLOR_IDS.flatMap((id) => {
+      const path = svg.querySelector<SVGPathElement>(`.pipe-${id}`);
+      if (!path) {
+        return [];
+      }
+      return [
+        {
+          path,
+          marks: [
+            ...svg.querySelectorAll<SVGPolygonElement>(
+              `.pipe-dash-arrows-${id} .pipe-dash-arrow`,
+            ),
+          ],
+          pathLen: path.getTotalLength(),
+          high: id === "hot" || id === "warm",
+        },
+      ];
+    }),
+    coils: AIR_FLOW_KINDS.map((kind) => coilAirEls(svg, kind)),
+  };
+}
+
+function cacheFor(svg: SVGSVGElement): AnimCache {
+  if (!animCache || animCache.svg !== svg) {
+    refreshAnimCache(svg);
+  }
+  return animCache as AnimCache;
+}
+
 export class SceneAnimation {
   private mm: ReturnType<typeof gsap.matchMedia> | null = null;
   private flow: gsap.core.Timeline | null = null;
@@ -41,6 +90,7 @@ export class SceneAnimation {
       this.machines = null;
       gsap.set(svg.querySelector("[data-role='particles']"), { autoAlpha: 0 });
       gsap.set(svg.querySelector("[data-role='static-arrows']"), { autoAlpha: 1 });
+      refreshAnimCache(svg);
       applyDashOffset(svg, 0);
       layoutAirFlow(svg, 0);
       return () => undefined;
@@ -48,6 +98,7 @@ export class SceneAnimation {
 
     this.mm.add("(prefers-reduced-motion: no-preference)", () => {
       this.applyParticleVisibility(config.lineStyle);
+      refreshAnimCache(svg);
       this.machines = buildMachineTimeline(svg);
       this.flow = buildFlowTimeline(svg, reverseParticleLoop(config));
       this.dashes = buildDashTimeline(svg);
@@ -113,6 +164,7 @@ export class SceneAnimation {
     }
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      refreshAnimCache(this.svg);
       applyDashOffset(this.svg, 0);
       layoutAirFlow(this.svg, 0);
       return;
@@ -125,6 +177,7 @@ export class SceneAnimation {
     this.flow?.kill();
     this.dashes?.kill();
     this.airFlow?.kill();
+    refreshAnimCache(this.svg);
     this.flow = buildFlowTimeline(this.svg, reverseParticleLoop(config));
     this.dashes = buildDashTimeline(this.svg);
     this.airFlow = buildAirFlowTimeline(this.svg);
@@ -158,6 +211,7 @@ export class SceneAnimation {
     this.machines = null;
     this.svg = null;
     this.topology = null;
+    animCache = null;
   }
 
   private applyParticleVisibility(lineStyle: DiagramConfig["lineStyle"]): void {
@@ -219,24 +273,15 @@ function dashSecondsForLoop(svg: SVGSVGElement): number {
   return (DASH_CYCLE * LOOP_SECONDS) / (loopLength * DASH_SPEED_VS_PARTICLES);
 }
 
-function isHighPressurePipe(id: string): boolean {
-  return id === "hot" || id === "warm";
-}
-
 function layoutDashArrows(svg: SVGSVGElement, offset: number): void {
+  if (svg.dataset.lineStyle !== "arrow") {
+    return;
+  }
   const pressure = svg.dataset.lineWidth === "pressureBased";
+  const tracks = cacheFor(svg).dashTracks;
 
-  for (const id of PIPE_COLOR_IDS) {
-    const path = svg.querySelector<SVGPathElement>(`.pipe-${id}`);
-    const marks = svg.querySelectorAll<SVGPolygonElement>(
-      `.pipe-dash-arrows-${id} .pipe-dash-arrow`,
-    );
-    if (!path || marks.length === 0) {
-      continue;
-    }
-
-    const pathLen = path.getTotalLength();
-    const high = isHighPressurePipe(id);
+  for (const track of tracks) {
+    const { path, marks, pathLen, high } = track;
     const cycle = pressure && high ? HIGH_DASH_CYCLE : DASH_CYCLE;
     const length = pressure && high ? HIGH_DASH_LENGTH : DASH_LENGTH;
     const width = pressure ? (high ? 8 : 3.5) : 6;
@@ -279,9 +324,11 @@ function layoutDashArrows(svg: SVGSVGElement, offset: number): void {
 }
 
 function applyDashOffset(svg: SVGSVGElement, offset: number): void {
-  svg.querySelectorAll(".pipe").forEach((pipe) => {
-    pipe.setAttribute("stroke-dashoffset", String(-offset));
-  });
+  const pipes = cacheFor(svg).pipes;
+  const dash = String(-offset);
+  for (const pipe of pipes) {
+    pipe.setAttribute("stroke-dashoffset", dash);
+  }
   layoutDashArrows(svg, offset);
 }
 
@@ -295,6 +342,7 @@ type CoilAirEls = {
   inHead: SVGPolygonElement;
   outHead: SVGPolygonElement;
   inLen: number;
+  outLen: number;
   gap: number;
   track: number;
   dartLen: number;
@@ -340,6 +388,7 @@ function coilAirEls(
     inHead,
     outHead,
     inLen,
+    outLen,
     gap,
     track,
     dartLen,
@@ -347,7 +396,7 @@ function coilAirEls(
 }
 
 function airFlowCycleSeconds(svg: SVGSVGElement): number {
-  const coil = coilAirEls(svg, "reject");
+  const coil = cacheFor(svg).coils[0];
   const loop = svg.querySelector<SVGPathElement>("#refrigerant-loop");
   const loopLength = loop?.getTotalLength() ?? 0;
   if (!coil || coil.track <= 0 || loopLength <= 0) {
@@ -360,8 +409,7 @@ function airFlowCycleSeconds(svg: SVGSVGElement): number {
 function layoutAirFlow(svg: SVGSVGElement, progress: number): void {
   const p = ((progress % 1) + 1) % 1;
 
-  for (const kind of AIR_FLOW_KINDS) {
-    const coil = coilAirEls(svg, kind);
+  for (const coil of cacheFor(svg).coils) {
     if (!coil) {
       continue;
     }
@@ -371,12 +419,13 @@ function layoutAirFlow(svg: SVGSVGElement, progress: number): void {
     const dashEnd = dashStart + windowLen;
     const outShift = coil.inLen + coil.gap;
 
-    layoutDart(coil.inStem, coil.inHead, dashStart, dashEnd);
+    layoutDart(coil.inStem, coil.inHead, dashStart, dashEnd, coil.inLen);
     layoutDart(
       coil.outStem,
       coil.outHead,
       dashStart - outShift,
       dashEnd - outShift,
+      coil.outLen,
     );
   }
 }
@@ -444,8 +493,8 @@ function layoutDart(
   head: SVGPolygonElement,
   dashStart: number,
   dashEnd: number,
+  pathLen: number,
 ): void {
-  const pathLen = stem.getTotalLength();
   if (pathLen < 2) {
     stem.setAttribute("stroke-dasharray", "0 1");
     head.setAttribute("visibility", "hidden");
