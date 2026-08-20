@@ -319,8 +319,25 @@ function simpleBoxArrows(opts: {
     ...(heating ? reverseArrows(loopArrows) : loopArrows),
     { x: disX, y: stubY, rotation: -90 },
     { x: sucX, y: stubY, rotation: 90 },
+    ...(iconValve ? iconCompressorStubArrows(sucX, disX, mid) : []),
     { x: vaporLeft, y: top, rotation: vapor },
     { x: vaporRight, y: top, rotation: vapor },
+  ];
+}
+
+function iconCompressorStubArrows(
+  sucX: number,
+  disX: number,
+  mid: number,
+): CircuitLayout["arrows"] {
+  const compX = Math.round((sucX + disX) / 2);
+  const disDir = disX >= sucX ? 1 : -1;
+  const sucJoinX = compX - disDir * COMPRESSOR_TRAP_HALF_WIDTH;
+  const disJoinX = compX + disDir * COMPRESSOR_TRAP_HALF_WIDTH;
+  const flow = disDir > 0 ? 0 : 180;
+  return [
+    { x: Math.round((sucX + sucJoinX) / 2), y: mid, rotation: flow },
+    { x: Math.round((disJoinX + disX) / 2), y: mid, rotation: flow },
   ];
 }
 
@@ -458,11 +475,15 @@ function simpleBoxLayout(
     const evapX = heating ? outdoorPipe : indoorPipe;
     if (iconRv) {
       const { uncoveredX, coveredX } = iconRv;
-      hot = `M${iconRv.disX},${mid} V${iconRv.dInY} H${iconRv.midX} V${iconRv.chamberY} H${uncoveredX} V${top} H${condX} V${coilTop}`;
+      const compX = Math.round((iconRv.midX + iconRv.disX) / 2);
+      const disDir = iconRv.disX >= iconRv.midX ? 1 : -1;
+      const sucJoinX = compX - disDir * COMPRESSOR_TRAP_HALF_WIDTH;
+      const disJoinX = compX + disDir * COMPRESSOR_TRAP_HALF_WIDTH;
+      hot = `M${disJoinX},${mid} H${iconRv.disX} V${iconRv.dInY} H${iconRv.midX} V${iconRv.chamberY} H${uncoveredX} V${top} H${condX} V${coilTop}`;
       warm = `M${condX},${coilBot} V${bot} H${warmEnd}`;
       cold = `M${coldStart},${bot} H${evapX} V${coilBot}`;
-      cool = `M${evapX},${coilTop} V${top} H${coveredX} V${iconRv.slideY} H${iconRv.midX} V${mid}`;
-      loop = `M${iconRv.disX},${mid} V${iconRv.dInY} H${iconRv.midX} V${iconRv.chamberY} H${uncoveredX} V${top} H${condPipe} V${bot} H${evapPipe} V${top} H${coveredX} V${iconRv.slideY} H${iconRv.midX} V${mid} H${iconRv.disX} Z`;
+      cool = `M${evapX},${coilTop} V${top} H${coveredX} V${iconRv.slideY} H${iconRv.midX} V${mid} H${sucJoinX}`;
+      loop = `M${disJoinX},${mid} H${iconRv.disX} V${iconRv.dInY} H${iconRv.midX} V${iconRv.chamberY} H${uncoveredX} V${top} H${condPipe} V${bot} H${evapPipe} V${top} H${coveredX} V${iconRv.slideY} H${iconRv.midX} V${mid} H${disJoinX} Z`;
     } else {
       hot = `M${machineX},${top} H${condX} V${coilTop}`;
       warm = `M${condX},${coilBot} V${bot} H${warmEnd}`;
