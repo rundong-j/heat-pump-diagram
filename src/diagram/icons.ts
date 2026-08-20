@@ -1,5 +1,7 @@
 import m from "mithril";
 
+/* Parked abstract-icon drawing helpers. reversingValveIcon is unused while
+   icon-equipment clones simple boxes; HUD has its own reversingValveIcon.
 export function fanIcon(radius: number): m.Children {
   const blade = `M0,0 L${radius * 0.22},${-radius * 0.28} L0,${-radius * 0.92} L${-radius * 0.22},${-radius * 0.28} Z`;
 
@@ -49,14 +51,6 @@ export function reversingValveIcon(heating = false): m.Children {
   ];
 }
 
-export function reversingValveSlide(heating: boolean, halfWidth = 12): m.Vnode {
-  const h = halfWidth;
-  return m("path.rv-slide", {
-    d: `M${-h},${-h * 0.5} L${h * 0.35},${-h * 0.5} L${h},${h * 0.5} L${-h * 0.35},${h * 0.5} Z`,
-    transform: heating ? "scale(-1 1)" : undefined,
-  });
-}
-
 export function coilFins(opts: {
   x: number;
   y: number;
@@ -80,6 +74,43 @@ export function coilFins(opts: {
   }
 
   return m("g.coil-fins", lines);
+}
+*/
+
+/** Schematic expansion device: two triangles pointing at each other on the liquid line. */
+export function expansionValveSymbol(halfWidth = 16, halfHeight = 13): m.Children {
+  return [
+    m("polygon.expansion-triangle", {
+      points: `${-halfWidth},${-halfHeight} ${-halfWidth},${halfHeight} 0,0`,
+    }),
+    m("polygon.expansion-triangle", {
+      points: `${halfWidth},${-halfHeight} ${halfWidth},${halfHeight} 0,0`,
+    }),
+  ];
+}
+
+/** Side-on compressor: isosceles trapezoid rotated 90°, long vertical on the left. */
+export function compressorTrapezoid(
+  halfWidth = 22,
+  leftHalfHeight = 20,
+  rightHalfHeight = 13,
+): m.Vnode {
+  return m("polygon.compressor-trap", {
+    points: [
+      `${-halfWidth},${-leftHalfHeight}`,
+      `${-halfWidth},${leftHalfHeight}`,
+      `${halfWidth},${rightHalfHeight}`,
+      `${halfWidth},${-rightHalfHeight}`,
+    ].join(" "),
+  });
+}
+
+export function reversingValveSlide(heating: boolean, halfWidth = 12): m.Vnode {
+  const h = halfWidth;
+  return m("path.rv-slide", {
+    d: `M${-h},${-h * 0.5} L${h * 0.35},${-h * 0.5} L${h},${h * 0.5} L${-h * 0.35},${h * 0.5} Z`,
+    transform: heating ? "scale(-1 1)" : undefined,
+  });
 }
 
 export function flowArrow(

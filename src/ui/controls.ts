@@ -255,7 +255,22 @@ type SquareSwitchOption<T extends string> = {
   value: T;
   label: string;
   icon?: () => m.Children;
+  available?: boolean;
 };
+
+function nextAvailableOption<T extends string>(
+  options: SquareSwitchOption<T>[],
+  index: number,
+): SquareSwitchOption<T> {
+  const count = options.length;
+  for (let step = 1; step <= count; step += 1) {
+    const option = options[(index + step) % count];
+    if (option.available !== false) {
+      return option;
+    }
+  }
+  return options[index];
+}
 
 function squareCycleSwitch<T extends string>(opts: {
   name: string;
@@ -269,7 +284,7 @@ function squareCycleSwitch<T extends string>(opts: {
     opts.options.findIndex((option) => option.value === opts.value),
   );
   const current = opts.options[index];
-  const next = opts.options[(index + 1) % opts.options.length];
+  const next = nextAvailableOption(opts.options, index);
   const disabled = Boolean(opts.disabled);
 
   return m(
@@ -381,15 +396,20 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
           squareCycleSwitch<ComponentStyle>({
             name: "Component style",
             value: config.componentStyle,
-            disabled: true,
             options: [
               { value: "simpleBox", label: "Simple box", icon: simpleBoxStyleIcon },
               { value: "icon", label: "Abstract icon", icon: abstractIconStyleIcon },
-              { value: "sketch", label: "Realistic sketch", icon: sketchStyleIcon },
+              {
+                value: "sketch",
+                label: "Realistic sketch",
+                icon: sketchStyleIcon,
+                available: false,
+              },
               {
                 value: "crossSection",
                 label: "Cross-section",
                 icon: crossSectionStyleIcon,
+                available: false,
               },
             ],
             onChange: (componentStyle) =>

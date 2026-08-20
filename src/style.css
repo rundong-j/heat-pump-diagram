@@ -255,6 +255,57 @@ body {
   stroke: var(--pipe-cold);
 }
 
+.pipe-indoor-coil-seg,
+.pipe-outdoor-coil-seg {
+  stroke: color-mix(
+    in srgb,
+    var(--coil-from) var(--coil-from-pct, 100%),
+    var(--coil-to) var(--coil-to-pct, 0%)
+  );
+}
+
+.diagram-scene[data-mode="heating"] .pipe-indoor-coil,
+.diagram-scene[data-mode="cooling"] .pipe-outdoor-coil {
+  --coil-from: var(--pipe-hot);
+  --coil-to: var(--pipe-warm);
+}
+
+.diagram-scene[data-mode="cooling"] .pipe-indoor-coil,
+.diagram-scene[data-mode="heating"] .pipe-outdoor-coil {
+  --coil-from: var(--pipe-cold);
+  --coil-to: var(--pipe-cool);
+}
+
+.diagram-scene[data-component-style="icon"] .air-flow-indoor,
+.diagram-scene[data-component-style="icon"] .air-flow-outdoor {
+  visibility: hidden;
+}
+
+.diagram-scene[data-component-style="simpleBox"] .pipe-indoor-coil,
+.diagram-scene[data-component-style="simpleBox"] .pipe-outdoor-coil {
+  visibility: hidden;
+}
+
+.diagram-scene[data-line-width="pressureBased"][data-mode="heating"] .pipe-indoor-coil-seg,
+.diagram-scene[data-line-width="pressureBased"][data-mode="cooling"] .pipe-outdoor-coil-seg {
+  stroke-width: 8;
+}
+
+.diagram-scene[data-line-width="pressureBased"][data-mode="cooling"] .pipe-indoor-coil-seg,
+.diagram-scene[data-line-width="pressureBased"][data-mode="heating"] .pipe-outdoor-coil-seg {
+  stroke-width: 3.5;
+}
+
+.diagram-scene[data-line-style="dashed"][data-line-width="pressureBased"][data-mode="heating"] .pipe-indoor-coil-seg,
+.diagram-scene[data-line-style="dashed"][data-line-width="pressureBased"][data-mode="cooling"] .pipe-outdoor-coil-seg {
+  stroke-dasharray: 8 6;
+}
+
+.diagram-scene[data-line-style="arrow"] .pipe-indoor-coil-seg,
+.diagram-scene[data-line-style="arrow"] .pipe-outdoor-coil-seg {
+  stroke-opacity: 1;
+}
+
 .diagram-scene[data-line-color="constant"] .pipe {
   stroke: var(--house-stroke);
 }
@@ -346,6 +397,7 @@ body {
   will-change: transform;
 }
 
+/* Parked abstract-icon unit/fan/TXV styles. Simple-box compressor-pulse stays live.
 .unit-body {
   fill: var(--unit-fill);
   stroke: var(--unit-stroke);
@@ -402,11 +454,6 @@ body {
   stroke-width: 1.5;
 }
 
-.compressor-pulse {
-  stroke: var(--unit-stroke);
-  will-change: transform;
-}
-
 .compressor-pulse line {
   stroke: var(--machine-line);
   stroke-width: 1.5;
@@ -425,13 +472,33 @@ body {
   stroke-width: 1.5;
 }
 
+.rv-port {
+  fill: var(--unit-stroke);
+}
+*/
+
+.compressor-pulse {
+  stroke: var(--unit-stroke);
+  will-change: transform;
+}
+
 .rv-slide {
   fill: var(--pipe-hot);
   stroke: none;
 }
 
-.rv-port {
-  fill: var(--unit-stroke);
+.expansion-triangle {
+  fill: var(--unit-fill);
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+  stroke-linejoin: miter;
+}
+
+.compressor-trap {
+  fill: var(--unit-fill);
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+  stroke-linejoin: miter;
 }
 
 .diagram-label {
@@ -557,7 +624,8 @@ body {
   visibility: hidden;
 }
 
-.diagram-scene[data-component-style="simpleBox"] .layer-labels {
+.diagram-scene[data-component-style="simpleBox"] .layer-labels,
+.diagram-scene[data-component-style="icon"] .layer-labels {
   visibility: hidden;
 }
 

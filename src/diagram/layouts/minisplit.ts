@@ -5,17 +5,20 @@ import {
   CYCLE_READINGS,
   heatFlowLabel,
   indoorCoilRole,
+  type CoilRole,
   type StationId,
 } from "../../model/cycleData";
 import type { DiagramConfig } from "../../model/types";
 import {
-  coilFins,
+  // coilFins,
   componentBox,
-  compressorIcon,
-  expansionValveIcon,
-  fanIcon,
+  // compressorIcon,
+  // expansionValveIcon,
+  // fanIcon,
   flowArrow,
-  reversingValveIcon,
+  // reversingValveIcon,
+  expansionValveSymbol,
+  compressorTrapezoid,
   reversingValveSlide,
 } from "../icons";
 import { dashArrowGroups } from "../dashArrows";
@@ -30,6 +33,10 @@ type CircuitLayout = {
   warm: string;
   cold: string;
   cool: string;
+  indoorCoilPath: string;
+  indoorCoilSegments: string[];
+  outdoorCoilPath: string;
+  outdoorCoilSegments: string[];
   indoorCoil: Point;
   outdoorCoil: Point;
   compressor: Point;
@@ -51,6 +58,16 @@ const SIMPLE_BOX_RV_WIDTH = 132;
 /** Discharge / suction stub offset from the RV center (canonical indoor-left). */
 const SIMPLE_BOX_RV_STUB = 24;
 const SIMPLE_BOX_RV_PORT_PAD = 16;
+const COMPRESSOR_TRAP_HALF_WIDTH = 22;
+const COMPRESSOR_TRAP_LEFT_HALF = 20;
+const COMPRESSOR_TRAP_RIGHT_HALF = 13;
+const EXPANSION_SYMBOL_HALF_WIDTH = 16;
+const EXPANSION_SYMBOL_HALF_HEIGHT = 13;
+const INDOOR_COIL_ROWS = 7;
+const INDOOR_COIL_CORNER_STUB = 16;
+const INDOOR_COIL_SEGMENTS = INDOOR_COIL_ROWS * 2 + 1;
+const INDOOR_COIL_RUN_WIDTH = SIMPLE_BOX_HEIGHT;
+const INDOOR_COIL_SPAN = SIMPLE_BOX_WIDTH;
 
 /** X along a simple-box coil. Fraction 0 is the left edge, 1 is the right. */
 function boxXAtFraction(centerX: number, fraction: number): number {
@@ -154,6 +171,10 @@ function mirrorLayout(layout: CircuitLayout): CircuitLayout {
     warm: flipPath(layout.warm),
     cold: flipPath(layout.cold),
     cool: flipPath(layout.cool),
+    indoorCoilPath: flipPath(layout.indoorCoilPath),
+    indoorCoilSegments: layout.indoorCoilSegments.map(flipPath),
+    outdoorCoilPath: flipPath(layout.outdoorCoilPath),
+    outdoorCoilSegments: layout.outdoorCoilSegments.map(flipPath),
     indoorCoil: flipPoint(layout.indoorCoil),
     outdoorCoil: flipPoint(layout.outdoorCoil),
     compressor: flipPoint(layout.compressor),
@@ -173,6 +194,7 @@ function mirrorLayout(layout: CircuitLayout): CircuitLayout {
   };
 }
 
+/* Parked abstract-icon reversing-valve circuit (canonical indoor-left).
 function reversingValveLayout(heating: boolean): CircuitLayout {
   return {
     loop: "M690,370 V250 H840 V405 H145 V220 H720 V370 H690 Z",
@@ -204,6 +226,7 @@ function reversingValveLayout(heating: boolean): CircuitLayout {
     ),
   };
 }
+*/
 
 function simpleBoxArrows(opts: {
   heating: boolean;
@@ -250,11 +273,99 @@ function simpleBoxArrows(opts: {
   ];
 }
 
+function emptyCoilSegments(): string[] {
+  return Array.from({ length: INDOOR_COIL_SEGMENTS }, () => "M0,0");
+}
+
+/**
+ * Tall stack of short horizontal runs, centered on `centerX`.
+ * Heating winds down from the center; cooling winds up. After each loop
+ * corner a short vertical stub runs before the first/last sideways run.
+ * First and last runs are half-width so the loop can enter and leave on the riser.
+ * `mirrorRuns` swaps left/right so the outdoor coil is a horizontal mirror.
+ */
+function indoorCoilPieces(
+  centerX: number,
+  top: number,
+  bot: number,
+  heating: boolean,
+  mirrorRuns = false,
+): string[] {
+  const left = centerX - INDOOR_COIL_RUN_WIDTH / 2;
+  const right = centerX + INDOOR_COIL_RUN_WIDTH / 2;
+  const first = mirrorRuns ? left : right;
+  const other = mirrorRuns ? right : left;
+  const runTop = top + INDOOR_COIL_CORNER_STUB;
+  const runBot = bot - INDOOR_COIL_CORNER_STUB;
+  const pitch = (runBot - runTop) / (INDOOR_COIL_ROWS - 1);
+  const yAt = (row: number) => runTop + row * pitch;
+  const pieces: string[] = [];
+  const pushV = (x: number, y0: number, y1: number) => {
+    pieces.push(`M${Math.round(x)},${Math.round(y0)} V${Math.round(y1)}`);
+  };
+  const pushH = (x0: number, x1: number, y: number) => {
+    pieces.push(`M${Math.round(x0)},${Math.round(y)} H${Math.round(x1)}`);
+  };
+
+  if (heating) {
+    pushV(centerX, top, runTop);
+    for (let i = 0; i < INDOOR_COIL_ROWS; i += 1) {
+      const y = yAt(i);
+      if (i === 0) {
+        pushH(centerX, first, y);
+      } else if (i === INDOOR_COIL_ROWS - 1) {
+        pushH(other, centerX, y);
+      } else if (i % 2 === 0) {
+        pushH(other, first, y);
+      } else {
+        pushH(first, other, y);
+      }
+      if (i < INDOOR_COIL_ROWS - 1) {
+        const arriveX = i % 2 === 0 ? first : other;
+        pushV(arriveX, y, yAt(i + 1));
+      }
+    }
+    pushV(centerX, runBot, bot);
+  } else {
+    pushV(centerX, bot, runBot);
+    for (let i = INDOOR_COIL_ROWS - 1; i >= 0; i -= 1) {
+      const y = yAt(i);
+      if (i === INDOOR_COIL_ROWS - 1) {
+        pushH(centerX, other, y);
+      } else if (i === 0) {
+        pushH(first, centerX, y);
+      } else if (i % 2 === 0) {
+        pushH(first, other, y);
+      } else {
+        pushH(other, first, y);
+      }
+      if (i > 0) {
+        const arriveX = i % 2 === 0 ? other : first;
+        pushV(arriveX, y, yAt(i - 1));
+      }
+    }
+    pushV(centerX, runTop, top);
+  }
+  return pieces;
+}
+
+function joinCoilPath(pieces: string[]): string {
+  if (pieces.length === 0) {
+    return "M0,0";
+  }
+  const rest = pieces
+    .slice(1)
+    .map((piece) => piece.replace(/^M[-.\d]+,[-.\d]+\s*/, ""))
+    .join(" ");
+  return `${pieces[0]} ${rest}`;
+}
+
 function simpleBoxLayout(
   heating: boolean,
   flip: boolean,
   compact: boolean,
   showReversingValve: boolean,
+  iconCoils: boolean,
 ): CircuitLayout {
   const indoorCx = 145;
   const outdoorCx = 840;
@@ -268,23 +379,82 @@ function simpleBoxLayout(
   const evapPipe = heating ? outdoorPipe : indoorPipe;
   const disX = machineX - SIMPLE_BOX_RV_STUB;
   const sucX = machineX + SIMPLE_BOX_RV_STUB;
+  const expWest = machineX - EXPANSION_SYMBOL_HALF_WIDTH;
+  const expEast = machineX + EXPANSION_SYMBOL_HALF_WIDTH;
+  const warmEnd = condPipe < machineX ? expWest : expEast;
+  const coldStart = evapPipe < machineX ? expWest : expEast;
+  const coilTop = mid - INDOOR_COIL_SPAN / 2;
+  const coilBot = mid + INDOOR_COIL_SPAN / 2;
+  const indoorPieces = indoorCoilPieces(
+    indoorPipe,
+    coilTop,
+    coilBot,
+    heating,
+  );
+  const outdoorPieces = indoorCoilPieces(
+    outdoorPipe,
+    coilTop,
+    coilBot,
+    !heating,
+    true,
+  );
 
-  const loop = showReversingValve
-    ? `M${disX},${mid} V${top} H${condPipe} V${bot} H${evapPipe} V${top} H${sucX} V${mid} H${disX} Z`
-    : `M${machineX},${top} H${outdoorPipe} V${bot} H${indoorPipe} V${top} H${machineX} Z`;
-  const hot = showReversingValve
-    ? `M${disX},${mid} V${top} H${condPipe} V${mid}`
-    : `M${machineX},${top} H${condPipe} V${mid}`;
-  const cool = showReversingValve
-    ? `M${evapPipe},${mid} V${top} H${sucX} V${mid}`
-    : `M${evapPipe},${mid} V${top} H${machineX}`;
+  let loop: string;
+  let hot: string;
+  let warm: string;
+  let cold: string;
+  let cool: string;
+  let indoorCoilPath: string;
+  let indoorCoilSegments: string[];
+  let outdoorCoilPath: string;
+  let outdoorCoilSegments: string[];
+
+  if (iconCoils) {
+    indoorCoilSegments = indoorPieces;
+    indoorCoilPath = joinCoilPath(indoorPieces);
+    outdoorCoilSegments = outdoorPieces;
+    outdoorCoilPath = joinCoilPath(outdoorPieces);
+    const condX = heating ? indoorPipe : outdoorPipe;
+    const evapX = heating ? outdoorPipe : indoorPipe;
+    hot = showReversingValve
+      ? `M${disX},${mid} V${top} H${condX} V${coilTop}`
+      : `M${machineX},${top} H${condX} V${coilTop}`;
+    warm = `M${condX},${coilBot} V${bot} H${warmEnd}`;
+    cold = `M${coldStart},${bot} H${evapX} V${coilBot}`;
+    cool = showReversingValve
+      ? `M${evapX},${coilTop} V${top} H${sucX} V${mid}`
+      : `M${evapX},${coilTop} V${top} H${machineX}`;
+    loop = showReversingValve
+      ? `M${disX},${mid} V${top} H${condPipe} V${bot} H${evapPipe} V${top} H${sucX} V${mid} H${disX} Z`
+      : `M${machineX},${top} H${outdoorPipe} V${bot} H${indoorPipe} V${top} H${machineX} Z`;
+  } else {
+    indoorCoilPath = "M0,0";
+    indoorCoilSegments = emptyCoilSegments();
+    outdoorCoilPath = "M0,0";
+    outdoorCoilSegments = emptyCoilSegments();
+    loop = showReversingValve
+      ? `M${disX},${mid} V${top} H${condPipe} V${bot} H${evapPipe} V${top} H${sucX} V${mid} H${disX} Z`
+      : `M${machineX},${top} H${outdoorPipe} V${bot} H${indoorPipe} V${top} H${machineX} Z`;
+    hot = showReversingValve
+      ? `M${disX},${mid} V${top} H${condPipe} V${mid}`
+      : `M${machineX},${top} H${condPipe} V${mid}`;
+    warm = `M${condPipe},${mid} V${bot} H${warmEnd}`;
+    cold = `M${coldStart},${bot} H${evapPipe} V${mid}`;
+    cool = showReversingValve
+      ? `M${evapPipe},${mid} V${top} H${sucX} V${mid}`
+      : `M${evapPipe},${mid} V${top} H${machineX}`;
+  }
 
   return {
     loop,
     hot,
-    warm: `M${condPipe},${mid} V${bot} H${machineX}`,
-    cold: `M${machineX},${bot} H${evapPipe} V${mid}`,
+    warm,
+    cold,
     cool,
+    indoorCoilPath,
+    indoorCoilSegments,
+    outdoorCoilPath,
+    outdoorCoilSegments,
     indoorCoil: { x: indoorCx, y: mid },
     outdoorCoil: { x: outdoorCx, y: mid },
     compressor: { x: machineX, y: showReversingValve ? mid : top },
@@ -314,6 +484,7 @@ function simpleBoxLayout(
   };
 }
 
+/* Parked abstract-icon loop with the reversing valve hidden (canonical indoor-left).
 function iconLayout(heating: boolean): CircuitLayout {
   return {
     loop: "M700,390 V250 H840 V405 H145 V220 H700 V390 Z",
@@ -344,27 +515,25 @@ function iconLayout(heating: boolean): CircuitLayout {
     ),
   };
 }
+*/
+
+function usesBoxLayout(style: DiagramConfig["componentStyle"]): boolean {
+  return style === "simpleBox" || style === "icon";
+}
 
 export function circuitLayout(config: DiagramConfig): CircuitLayout {
   const heating = config.mode === "heating";
-  let layout: CircuitLayout;
-
-  if (config.componentStyle === "simpleBox") {
-    layout = simpleBoxLayout(
-      heating,
-      config.indoorSide === "right",
-      config.overlays.heatTransfer,
-      config.showReversingValve,
-    );
-  } else if (config.showReversingValve) {
-    layout = reversingValveLayout(heating);
-  } else {
-    layout = iconLayout(heating);
-  }
+  let layout: CircuitLayout = simpleBoxLayout(
+    heating,
+    config.indoorSide === "right",
+    config.overlays.heatTransfer,
+    config.showReversingValve,
+    config.componentStyle === "icon",
+  );
 
   const reverseLoopArrows =
     heating &&
-    !(config.componentStyle === "simpleBox" && config.showReversingValve);
+    !(usesBoxLayout(config.componentStyle) && config.showReversingValve);
   if (reverseLoopArrows) {
     layout = { ...layout, arrows: reverseArrows(layout.arrows) };
   }
@@ -380,7 +549,7 @@ export function topologyKey(config: DiagramConfig): string {
 export function reverseParticleLoop(config: DiagramConfig): boolean {
   return (
     config.mode === "heating" &&
-    !(config.componentStyle === "simpleBox" && config.showReversingValve)
+    !(usesBoxLayout(config.componentStyle) && config.showReversingValve)
   );
 }
 
@@ -495,8 +664,9 @@ function coilAirFlow(opts: {
   onLeft: boolean;
   pointUp: boolean;
   kind: AirFlowKind;
+  indoor?: boolean;
 }): m.Vnode {
-  const { coil, onLeft, pointUp, kind } = opts;
+  const { coil, onLeft, pointUp, kind, indoor } = opts;
   const loopTop = SIMPLE_BOX_LOOP_TOP;
   const loopBot = SIMPLE_BOX_LOOP_BOTTOM;
   const chord = loopBot - loopTop;
@@ -633,7 +803,10 @@ function coilAirFlow(opts: {
 
   const gapLen = radius * Math.abs(thetaOutStart - thetaInEnd);
 
-  return m(`g.${groupKey}`, { key: groupKey, "data-air-gap": String(gapLen) }, [
+  return m(
+    `g.${groupKey}${indoor ? ".air-flow-indoor" : ".air-flow-outdoor"}`,
+    { key: groupKey, "data-air-gap": String(gapLen) },
+    [
     m("defs", { key: `${groupKey}-defs` }, [
       m(
         "linearGradient",
@@ -682,7 +855,8 @@ function coilAirFlow(opts: {
     }),
     dartGroup("in", inboundPath),
     dartGroup("out", outboundPath),
-  ]);
+    ],
+  );
 }
 
 function houseContext(flip: boolean): m.Children {
@@ -787,6 +961,191 @@ function overlayBadge(
   ]);
 }
 
+function boxedEquipment(
+  circuit: CircuitLayout,
+  config: DiagramConfig,
+  heating: boolean,
+  indoorRole: CoilRole,
+  outdoorRole: CoilRole,
+  expansion: "box" | "symbol" = "box",
+  compressor: "box" | "symbol" = "box",
+  indoor: "box" | "coil" = "box",
+  outdoor: "box" | "coil" = "box",
+): m.Children {
+  const expansionNode =
+    expansion === "symbol"
+      ? m(
+          "g.component-box",
+          {
+            key: "expansionValve",
+            "data-component": "expansionValve",
+            transform: `translate(${circuit.expansion.x} ${circuit.expansion.y})`,
+          },
+          [
+            expansionValveSymbol(
+              EXPANSION_SYMBOL_HALF_WIDTH,
+              EXPANSION_SYMBOL_HALF_HEIGHT,
+            ),
+            m(
+              "text.box-label",
+              {
+                "text-anchor": "middle",
+                y: EXPANSION_SYMBOL_HALF_HEIGHT + 8,
+                dy: "0.85em",
+              },
+              "Expansion valve",
+            ),
+          ],
+        )
+      : componentBox({
+          id: "expansionValve",
+          x: circuit.expansion.x,
+          y: circuit.expansion.y,
+          width: 150,
+          height: 52,
+          label: "Expansion valve",
+        });
+
+  const compressorNode =
+    compressor === "symbol"
+      ? m(
+          "g.component-box",
+          {
+            key: "compressor",
+            "data-component": "compressor",
+            transform: `translate(${circuit.compressor.x} ${circuit.compressor.y})`,
+          },
+          [
+            m(
+              "g.compressor-pulse",
+              compressorTrapezoid(
+                COMPRESSOR_TRAP_HALF_WIDTH,
+                COMPRESSOR_TRAP_LEFT_HALF,
+                COMPRESSOR_TRAP_RIGHT_HALF,
+              ),
+            ),
+            m(
+              "text.box-label",
+              {
+                "text-anchor": "middle",
+                y: -(COMPRESSOR_TRAP_LEFT_HALF + 8),
+                dy: "-0.25em",
+              },
+              "Compressor",
+            ),
+          ],
+        )
+      : componentBox({
+          id: "compressor",
+          x: circuit.compressor.x,
+          y: circuit.compressor.y,
+          width: 132,
+          height: 52,
+          label: "Compressor",
+          pulse: true,
+        });
+
+  const indoorOnLeft = circuit.indoorCoil.x < ZONE_WIDTH;
+  const indoorLabelX = indoorOnLeft
+    ? circuit.indoorCoil.x + SIMPLE_BOX_WIDTH / 2 + 12
+    : circuit.indoorCoil.x - SIMPLE_BOX_WIDTH / 2 - 12;
+  const indoorNode =
+    indoor === "coil"
+      ? m(
+          "text.box-label",
+          {
+            key: "indoorCoilLabel",
+            "data-component": "indoorCoil",
+            x: indoorLabelX,
+            y: circuit.indoorCoil.y,
+            "text-anchor": indoorOnLeft ? "start" : "end",
+            dy: "0.35em",
+          },
+          coilLabel("indoor", indoorRole, config.coilLabels),
+        )
+      : componentBox({
+          id: "indoorCoil",
+          x: circuit.indoorCoil.x,
+          y: circuit.indoorCoil.y,
+          width: SIMPLE_BOX_WIDTH,
+          height: SIMPLE_BOX_HEIGHT,
+          label: coilLabel("indoor", indoorRole, config.coilLabels),
+        });
+
+  const outdoorOnLeft = circuit.outdoorCoil.x < ZONE_WIDTH;
+  const outdoorLabelX = outdoorOnLeft
+    ? circuit.outdoorCoil.x + SIMPLE_BOX_WIDTH / 2 + 12
+    : circuit.outdoorCoil.x - SIMPLE_BOX_WIDTH / 2 - 12;
+  const outdoorNode =
+    outdoor === "coil"
+      ? m(
+          "text.box-label",
+          {
+            key: "outdoorCoilLabel",
+            "data-component": "outdoorCoil",
+            x: outdoorLabelX,
+            y: circuit.outdoorCoil.y,
+            "text-anchor": outdoorOnLeft ? "start" : "end",
+            dy: "0.35em",
+          },
+          coilLabel("outdoor", outdoorRole, config.coilLabels),
+        )
+      : componentBox({
+          id: "outdoorCoil",
+          x: circuit.outdoorCoil.x,
+          y: circuit.outdoorCoil.y,
+          width: SIMPLE_BOX_WIDTH,
+          height: SIMPLE_BOX_HEIGHT,
+          label: coilLabel("outdoor", outdoorRole, config.coilLabels),
+        });
+
+  return [
+    indoorNode,
+    outdoorNode,
+    compressorNode,
+    expansionNode,
+    componentBox({
+      id: "reversingValve",
+      x: circuit.reversingValve.x,
+      y: circuit.reversingValve.y,
+      width: SIMPLE_BOX_RV_WIDTH,
+      height: SIMPLE_BOX_HEIGHT,
+      label: "Reversing valve",
+      ornament: m(
+        "g",
+        { transform: "translate(0 -17)" },
+        reversingValveSlide(heating, 14),
+      ),
+      labelDy: "1.05em",
+    }),
+  ];
+}
+
+function iconCoilGroup(
+  key: string,
+  segments: string[],
+  segClass: string,
+): m.Vnode {
+  return m(
+    `g.pipe-${key}`,
+    { key: `pipe-${key}` },
+    segments.map((d, index) => {
+      const t = (index + 0.5) / INDOOR_COIL_SEGMENTS;
+      const fromPct = Math.round((1 - t) * 100);
+      const toPct = Math.round(t * 100);
+      return m(`path.pipe.${segClass}`, {
+        key: `pipe-${key}-${index}`,
+        d,
+        fill: "none",
+        style: {
+          "--coil-from-pct": `${fromPct}%`,
+          "--coil-to-pct": `${toPct}%`,
+        },
+      });
+    }),
+  );
+}
+
 export function minisplitScene(config: DiagramConfig): m.Children {
   const circuit = circuitLayout(config);
   const heating = config.mode === "heating";
@@ -869,6 +1228,16 @@ export function minisplitScene(config: DiagramConfig): m.Children {
         d: circuit.warm,
         fill: "none",
       }),
+      iconCoilGroup(
+        "indoor-coil",
+        circuit.indoorCoilSegments,
+        "pipe-indoor-coil-seg",
+      ),
+      iconCoilGroup(
+        "outdoor-coil",
+        circuit.outdoorCoilSegments,
+        "pipe-outdoor-coil-seg",
+      ),
       m("path.pipe.pipe-cold", {
         key: "pipe-cold",
         d: circuit.cold,
@@ -908,16 +1277,19 @@ export function minisplitScene(config: DiagramConfig): m.Children {
         onLeft: condenserCoil.x < ZONE_WIDTH,
         pointUp: condenserCoil === circuit.outdoorCoil,
         kind: "reject",
+        indoor: condenserCoil === circuit.indoorCoil,
       }),
       coilAirFlow({
         coil: evaporatorCoil,
         onLeft: evaporatorCoil.x < ZONE_WIDTH,
         pointUp: evaporatorCoil === circuit.outdoorCoil,
         kind: "absorb",
+        indoor: evaporatorCoil === circuit.indoorCoil,
       }),
     ]),
 
     layer("equipment", [
+      /* Parked abstract-icon units (canonical indoor-left, flipped as a group).
       m("g.icon-equipment", {
         key: "icon-equipment",
         transform: flip ? `translate(${VIEWPORT_WIDTH} 0) scale(-1 1)` : undefined,
@@ -939,7 +1311,6 @@ export function minisplitScene(config: DiagramConfig): m.Children {
           m("rect.unit-vent", { x: 90, y: 314, width: 210, height: 8, rx: 2 }),
           m("g.indoor-fan", { transform: "translate(282 257)" }, fanIcon(30)),
         ]),
-
         m("g.outdoor-unit", [
           m("rect.unit-body", { x: 630, y: 120, width: 250, height: 330, rx: 12 }),
           m("circle.fan-shroud", { cx: 755, cy: 185, r: 52 }),
@@ -962,7 +1333,6 @@ export function minisplitScene(config: DiagramConfig): m.Children {
             reversingValveIcon(heating),
           ),
         ]),
-
         m(
           "g.expansion-valve",
           {
@@ -973,56 +1343,27 @@ export function minisplitScene(config: DiagramConfig): m.Children {
           expansionValveIcon(),
         ),
       ]),
-
-      m("g.simple-box-equipment", { key: "simple-box-equipment" }, [
-        componentBox({
-          id: "indoorCoil",
-          x: circuit.indoorCoil.x,
-          y: circuit.indoorCoil.y,
-          width: SIMPLE_BOX_WIDTH,
-          height: SIMPLE_BOX_HEIGHT,
-          label: coilLabel("indoor", indoorRole, config.coilLabels),
-        }),
-        componentBox({
-          id: "outdoorCoil",
-          x: circuit.outdoorCoil.x,
-          y: circuit.outdoorCoil.y,
-          width: SIMPLE_BOX_WIDTH,
-          height: SIMPLE_BOX_HEIGHT,
-          label: coilLabel("outdoor", outdoorRole, config.coilLabels),
-        }),
-        componentBox({
-          id: "compressor",
-          x: circuit.compressor.x,
-          y: circuit.compressor.y,
-          width: 132,
-          height: 52,
-          label: "Compressor",
-          pulse: true,
-        }),
-        componentBox({
-          id: "expansionValve",
-          x: circuit.expansion.x,
-          y: circuit.expansion.y,
-          width: 150,
-          height: 52,
-          label: "Expansion valve",
-        }),
-        componentBox({
-          id: "reversingValve",
-          x: circuit.reversingValve.x,
-          y: circuit.reversingValve.y,
-          width: SIMPLE_BOX_RV_WIDTH,
-          height: SIMPLE_BOX_HEIGHT,
-          label: "Reversing valve",
-          ornament: m(
-            "g",
-            { transform: "translate(0 -17)" },
-            reversingValveSlide(heating, 14),
-          ),
-          labelDy: "1.05em",
-        }),
-      ]),
+      */
+      m(
+        "g.icon-equipment",
+        { key: "icon-equipment" },
+        boxedEquipment(
+          circuit,
+          config,
+          heating,
+          indoorRole,
+          outdoorRole,
+          "symbol",
+          "symbol",
+          "coil",
+          "coil",
+        ),
+      ),
+      m(
+        "g.simple-box-equipment",
+        { key: "simple-box-equipment" },
+        boxedEquipment(circuit, config, heating, indoorRole, outdoorRole, "box"),
+      ),
     ]),
 
     layer("labels", [

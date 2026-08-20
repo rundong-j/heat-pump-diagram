@@ -72,7 +72,8 @@ export class SceneAnimation {
     }
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const simpleBox = config.componentStyle === "simpleBox";
+    const simpleBox =
+      config.componentStyle === "simpleBox" || config.componentStyle === "icon";
     const labels = this.svg.querySelector("[data-role='labels']");
     const arrows = this.svg.querySelector("[data-role='static-arrows']");
     const heatTransfer = this.svg.querySelector("[data-role='heat-transfer']");
