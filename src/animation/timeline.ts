@@ -131,6 +131,7 @@ export class SceneAnimation {
     this.flow.progress(progress);
     this.dashes.progress(dashProgress);
     this.airFlow.progress(airProgress);
+    layoutAirFlow(this.svg, airProgress);
     this.applyPlayback({ ...config.playback, playing: wasPlaying });
   }
 
@@ -296,6 +297,7 @@ type CoilAirEls = {
   inLen: number;
   gap: number;
   track: number;
+  dartLen: number;
 };
 
 function coilAirEls(
@@ -326,6 +328,12 @@ function coilAirEls(
   if (inLen < 2 || outLen < 2 || !Number.isFinite(gap) || gap < 0) {
     return null;
   }
+  const track = inLen + gap + outLen;
+  const windowAttr = Number(group?.getAttribute("data-air-window"));
+  const dartLen =
+    Number.isFinite(windowAttr) && windowAttr >= 2 * AIR_FLOW_HEAD_LENGTH
+      ? windowAttr
+      : track;
   return {
     inStem,
     outStem,
@@ -333,7 +341,8 @@ function coilAirEls(
     outHead,
     inLen,
     gap,
-    track: inLen + gap + outLen,
+    track,
+    dartLen,
   };
 }
 
@@ -344,7 +353,7 @@ function airFlowCycleSeconds(svg: SVGSVGElement): number {
   if (!coil || coil.track <= 0 || loopLength <= 0) {
     return LOOP_SECONDS;
   }
-  const travel = coil.track + dartWindow(coil.track);
+  const travel = coil.track + dartWindow(coil.dartLen);
   return (travel * LOOP_SECONDS) / (loopLength * AIR_FLOW_SPEED_VS_PARTICLES);
 }
 
@@ -357,7 +366,7 @@ function layoutAirFlow(svg: SVGSVGElement, progress: number): void {
       continue;
     }
 
-    const windowLen = dartWindow(coil.track);
+    const windowLen = dartWindow(coil.dartLen);
     const dashStart = p * (coil.track + windowLen) - windowLen;
     const dashEnd = dashStart + windowLen;
     const outShift = coil.inLen + coil.gap;

@@ -276,11 +276,6 @@ body {
   --coil-to: var(--pipe-cool);
 }
 
-.diagram-scene[data-component-style="icon"] .air-flow-indoor,
-.diagram-scene[data-component-style="icon"] .air-flow-outdoor {
-  visibility: hidden;
-}
-
 .diagram-scene[data-component-style="simpleBox"] .pipe-indoor-coil,
 .diagram-scene[data-component-style="simpleBox"] .pipe-outdoor-coil {
   visibility: hidden;

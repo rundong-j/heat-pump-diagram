@@ -58,6 +58,10 @@ const SIMPLE_BOX_RV_WIDTH = 132;
 /** Discharge / suction stub offset from the RV center (canonical indoor-left). */
 const SIMPLE_BOX_RV_STUB = 24;
 const SIMPLE_BOX_RV_PORT_PAD = 16;
+/** Icon 4-way valve: top ports sit this far left/right of the machine column. */
+const ICON_RV_HALF = 36;
+/** Icon 4-way valve: bottom of the U-tubes below the top loop. */
+const ICON_RV_DROP = 26;
 const COMPRESSOR_TRAP_HALF_WIDTH = 22;
 const COMPRESSOR_TRAP_LEFT_HALF = 20;
 const COMPRESSOR_TRAP_RIGHT_HALF = 13;
@@ -68,6 +72,12 @@ const INDOOR_COIL_CORNER_STUB = 16;
 const INDOOR_COIL_SEGMENTS = INDOOR_COIL_ROWS * 2 + 1;
 const INDOOR_COIL_RUN_WIDTH = SIMPLE_BOX_HEIGHT;
 const INDOOR_COIL_SPAN = SIMPLE_BOX_WIDTH;
+/** Horizontal air-flow inbound approach past each coil edge (icon). */
+const INDOOR_COIL_AIR_EXT = INDOOR_COIL_SPAN / 2;
+/** Extra outbound travel used only for a slow destination fade (~2s at particle speed). */
+const INDOOR_COIL_AIR_FADE_OUT = 120;
+/** Icon coil labels: below air-flow (cy), above bottom refrigerant turn. */
+const ICON_COIL_LABEL_Y_OFFSET = INDOOR_COIL_SPAN / 2 - 22;
 
 /** X along a simple-box coil. Fraction 0 is the left edge, 1 is the right. */
 function boxXAtFraction(centerX: number, fraction: number): number {
@@ -416,16 +426,21 @@ function simpleBoxLayout(
     outdoorCoilPath = joinCoilPath(outdoorPieces);
     const condX = heating ? indoorPipe : outdoorPipe;
     const evapX = heating ? outdoorPipe : indoorPipe;
+    const leftX = machineX - ICON_RV_HALF;
+    const rightX = machineX + ICON_RV_HALF;
+    const valveBot = top + ICON_RV_DROP;
+    const rvHotTop = heating ? leftX : rightX;
+    const rvCoolTop = heating ? rightX : leftX;
     hot = showReversingValve
-      ? `M${disX},${mid} V${top} H${condX} V${coilTop}`
+      ? `M${disX},${mid} V${valveBot} H${rvHotTop} V${top} H${condX} V${coilTop}`
       : `M${machineX},${top} H${condX} V${coilTop}`;
     warm = `M${condX},${coilBot} V${bot} H${warmEnd}`;
     cold = `M${coldStart},${bot} H${evapX} V${coilBot}`;
     cool = showReversingValve
-      ? `M${evapX},${coilTop} V${top} H${sucX} V${mid}`
+      ? `M${evapX},${coilTop} V${top} H${rvCoolTop} V${valveBot} H${sucX} V${mid}`
       : `M${evapX},${coilTop} V${top} H${machineX}`;
     loop = showReversingValve
-      ? `M${disX},${mid} V${top} H${condPipe} V${bot} H${evapPipe} V${top} H${sucX} V${mid} H${disX} Z`
+      ? `M${disX},${mid} V${valveBot} H${rvHotTop} V${top} H${condPipe} V${bot} H${evapPipe} V${top} H${rvCoolTop} V${valveBot} H${sucX} V${mid} H${disX} Z`
       : `M${machineX},${top} H${outdoorPipe} V${bot} H${indoorPipe} V${top} H${machineX} Z`;
   } else {
     indoorCoilPath = "M0,0";
@@ -597,6 +612,38 @@ function roundCoord(n: number): number {
 
 type AirFlowKind = "reject" | "absorb";
 
+function fadeStopsAlong(
+  span: number,
+  fadeInPx: number,
+  fadeOutPx: number,
+): m.Children {
+  const inPct = Math.min(40, Math.max(4, (fadeInPx / span) * 100));
+  const outPct = Math.min(96, Math.max(inPct + 8, (1 - fadeOutPx / span) * 100));
+  const pct = (n: number) => `${n.toFixed(1)}%`;
+  return [
+    m("stop", {
+      offset: "0%",
+      "stop-color": "#fff",
+      "stop-opacity": "0",
+    }),
+    m("stop", {
+      offset: pct(inPct),
+      "stop-color": "#fff",
+      "stop-opacity": "1",
+    }),
+    m("stop", {
+      offset: pct(outPct),
+      "stop-color": "#fff",
+      "stop-opacity": "1",
+    }),
+    m("stop", {
+      offset: "100%",
+      "stop-color": "#fff",
+      "stop-opacity": "0",
+    }),
+  ];
+}
+
 function airFlowFadeDefs(): m.Vnode {
   return m("defs", { key: "air-flow-shared-defs" }, [
     m(
@@ -660,6 +707,20 @@ function airFlowFadeDefs(): m.Vnode {
  * Absorb (evaporator): solid cool dart into the box, solid cold dart out.
  */
 function coilAirFlow(opts: {
+  coil: Point;
+  onLeft: boolean;
+  pointUp: boolean;
+  kind: AirFlowKind;
+  indoor?: boolean;
+  icon?: boolean;
+}): m.Vnode {
+  if (opts.icon) {
+    return coilAirFlowIcon(opts);
+  }
+  return coilAirFlowBox(opts);
+}
+
+function coilAirFlowBox(opts: {
   coil: Point;
   onLeft: boolean;
   pointUp: boolean;
@@ -859,6 +920,216 @@ function coilAirFlow(opts: {
   );
 }
 
+/** Straight horizontal darts through the icon coil stack (52×140). */
+function coilAirFlowIcon(opts: {
+  coil: Point;
+  onLeft: boolean;
+  kind: AirFlowKind;
+  indoor?: boolean;
+}): m.Vnode {
+  const { coil, onLeft, kind, indoor } = opts;
+  const yMid = coil.y;
+  const coilLeft = coil.x - INDOOR_COIL_RUN_WIDTH / 2;
+  const coilRight = coil.x + INDOOR_COIL_RUN_WIDTH / 2;
+  const ext = INDOOR_COIL_AIR_EXT;
+  const destExt = INDOOR_COIL_AIR_EXT + INDOOR_COIL_AIR_FADE_OUT;
+  const goingRight = onLeft;
+  const xTail = goingRight ? coilLeft - ext : coilRight + ext;
+  const xTip = goingRight ? coilRight + destExt : coilLeft - destExt;
+  const xInEnd = goingRight ? coilLeft : coilRight;
+  const xOutStart = goingRight ? coilRight : coilLeft;
+  const gap = Math.abs(coilRight - coilLeft);
+  const hs = AIR_FLOW_SHAFT / 2;
+  const hw = AIR_FLOW_HEAD_WIDTH / 2;
+  const hl = AIR_FLOW_HEAD_HEIGHT;
+  const r = roundCoord;
+
+  function horizontalArrowPath(x0: number, x1: number): string {
+    if (goingRight) {
+      const base = x1 - hl;
+      return [
+        `M${r(x0)},${r(yMid - hs)}`,
+        `H${r(base)}`,
+        `L${r(base)},${r(yMid - hw)}`,
+        `L${r(x1)},${r(yMid)}`,
+        `L${r(base)},${r(yMid + hw)}`,
+        `L${r(base)},${r(yMid + hs)}`,
+        `H${r(x0)}`,
+        "Z",
+      ].join(" ");
+    }
+    const base = x0 + hl;
+    return [
+      `M${r(x1)},${r(yMid - hs)}`,
+      `H${r(base)}`,
+      `L${r(base)},${r(yMid - hw)}`,
+      `L${r(x0)},${r(yMid)}`,
+      `L${r(base)},${r(yMid + hw)}`,
+      `L${r(base)},${r(yMid + hs)}`,
+      `H${r(x1)}`,
+      "Z",
+    ].join(" ");
+  }
+
+  function horizontalCenterline(x0: number, x1: number): string {
+    return `M${x0.toFixed(2)},${yMid.toFixed(2)} H${x1.toFixed(2)}`;
+  }
+
+  function horizontalShaftClip(x0: number, x1: number): string {
+    const left = Math.min(x0, x1);
+    const right = Math.max(x0, x1);
+    return [
+      `M${left.toFixed(2)},${(yMid - hs).toFixed(2)}`,
+      `H${right.toFixed(2)}`,
+      `V${(yMid + hs).toFixed(2)}`,
+      `H${left.toFixed(2)}`,
+      "Z",
+    ].join(" ");
+  }
+
+  const inboundPath = horizontalCenterline(xTail, xInEnd);
+  const outboundPath = horizontalCenterline(xOutStart, xTip);
+  const inboundClip = horizontalShaftClip(xTail, xInEnd);
+  const outboundClip = horizontalShaftClip(xOutStart, xTip);
+  const xStaticTip = goingRight ? coilRight + ext : coilLeft - ext;
+  const arrowPath = horizontalArrowPath(xTail, xStaticTip);
+
+  const gradientId =
+    kind === "reject"
+      ? "air-flow-condenser-gradient"
+      : "air-flow-evaporator-gradient";
+  const groupKey =
+    kind === "reject" ? "air-flow-condenser" : "air-flow-evaporator";
+  const tailStop =
+    kind === "reject" ? "air-flow-grad-warm" : "air-flow-grad-cool";
+  const tipStop =
+    kind === "reject" ? "air-flow-grad-hot" : "air-flow-grad-cold";
+  const fadeGradId = `${groupKey}-fade-grad-h`;
+  const fadeMaskId = `${groupKey}-fade-mask-h`;
+
+  function dartGroup(part: "in" | "out", pathD: string): m.Vnode {
+    const partClipId = `air-flow-clip-${kind}-${part}`;
+    return m(
+      `g.air-flow-motion.air-flow-motion-${kind}-${part}`,
+      {
+        key: `${groupKey}-motion-${part}`,
+        mask: `url(#${fadeMaskId})`,
+      },
+      [
+        m(
+          `g.air-flow-stem-clip.air-flow-stem-clip-${kind}-${part}`,
+          {
+            key: `${groupKey}-stem-clip-${part}`,
+            "clip-path": `url(#${partClipId})`,
+          },
+          m(`path.air-flow-stem.air-flow-stem-${kind}-${part}`, {
+            key: `${groupKey}-stem-${part}`,
+            d: pathD,
+            fill: "none",
+          }),
+        ),
+        m(`polygon.air-flow-head.air-flow-head-${kind}-${part}`, {
+          key: `${groupKey}-head-${part}`,
+          points: "0,0 0,0 0,0",
+          visibility: "hidden",
+        }),
+      ],
+    );
+  }
+
+  return m(
+    `g.${groupKey}.air-flow-horizontal${indoor ? ".air-flow-indoor" : ".air-flow-outdoor"}`,
+    {
+      key: groupKey,
+      "data-air-gap": String(gap),
+      "data-air-window": String(ext * 2 + gap),
+    },
+    [
+      m("defs", { key: `${groupKey}-defs` }, [
+        m(
+          "linearGradient",
+          {
+            key: `${groupKey}-grad`,
+            id: gradientId,
+            gradientUnits: "userSpaceOnUse",
+            x1: String(xTail),
+            y1: String(yMid),
+            x2: String(xTip),
+            y2: String(yMid),
+          },
+          [
+            m(`stop.${tailStop}`, {
+              offset: "0%",
+              "stop-opacity": "0",
+            }),
+            m(`stop.${tipStop}`, {
+              offset: "45%",
+              "stop-opacity": "1",
+            }),
+          ],
+        ),
+        m(
+          "linearGradient",
+          {
+            key: fadeGradId,
+            id: fadeGradId,
+            gradientUnits: "userSpaceOnUse",
+            x1: String(xTail),
+            y1: String(yMid),
+            x2: String(xTip),
+            y2: String(yMid),
+          },
+          fadeStopsAlong(
+            Math.abs(xTip - xTail),
+            AIR_FLOW_HEAD_HEIGHT,
+            INDOOR_COIL_AIR_FADE_OUT,
+          ),
+        ),
+        m(
+          "mask",
+          {
+            key: fadeMaskId,
+            id: fadeMaskId,
+            maskUnits: "userSpaceOnUse",
+            maskContentUnits: "userSpaceOnUse",
+          },
+          m("rect", {
+            x: 0,
+            y: 0,
+            width: VIEWPORT_WIDTH,
+            height: VIEWPORT_HEIGHT,
+            fill: `url(#${fadeGradId})`,
+          }),
+        ),
+        m(
+          "clipPath",
+          {
+            key: `${groupKey}-clip-in`,
+            id: `air-flow-clip-${kind}-in`,
+            clipPathUnits: "userSpaceOnUse",
+          },
+          m("path", { key: `${groupKey}-clip-path-in`, d: inboundClip }),
+        ),
+        m(
+          "clipPath",
+          {
+            key: `${groupKey}-clip-out`,
+            id: `air-flow-clip-${kind}-out`,
+            clipPathUnits: "userSpaceOnUse",
+          },
+          m("path", { key: `${groupKey}-clip-path-out`, d: outboundClip }),
+        ),
+      ]),
+      m(`path.air-flow-arrow.air-flow-arrow-${kind}`, {
+        key: `${groupKey}-arrow`,
+        d: arrowPath,
+      }),
+      dartGroup("in", inboundPath),
+      dartGroup("out", outboundPath),
+    ],
+  );
+}
+
 function houseContext(flip: boolean): m.Children {
   // Canonical indoor-left geometry; mirrored when indoor is on the right.
   // Body runs past the paired arrows so indoor coil + feed lines read as inside.
@@ -971,6 +1242,7 @@ function boxedEquipment(
   compressor: "box" | "symbol" = "box",
   indoor: "box" | "coil" = "box",
   outdoor: "box" | "coil" = "box",
+  reversing: "box" | "lines" = "box",
 ): m.Children {
   const expansionNode =
     expansion === "symbol"
@@ -1045,6 +1317,7 @@ function boxedEquipment(
           pulse: true,
         });
 
+  const iconCoilLabelY = (cy: number) => cy + ICON_COIL_LABEL_Y_OFFSET;
   const indoorOnLeft = circuit.indoorCoil.x < ZONE_WIDTH;
   const indoorLabelX = indoorOnLeft
     ? circuit.indoorCoil.x + SIMPLE_BOX_WIDTH / 2 + 12
@@ -1057,7 +1330,7 @@ function boxedEquipment(
             key: "indoorCoilLabel",
             "data-component": "indoorCoil",
             x: indoorLabelX,
-            y: circuit.indoorCoil.y,
+            y: iconCoilLabelY(circuit.indoorCoil.y),
             "text-anchor": indoorOnLeft ? "start" : "end",
             dy: "0.35em",
           },
@@ -1084,7 +1357,7 @@ function boxedEquipment(
             key: "outdoorCoilLabel",
             "data-component": "outdoorCoil",
             x: outdoorLabelX,
-            y: circuit.outdoorCoil.y,
+            y: iconCoilLabelY(circuit.outdoorCoil.y),
             "text-anchor": outdoorOnLeft ? "start" : "end",
             dy: "0.35em",
           },
@@ -1099,25 +1372,46 @@ function boxedEquipment(
           label: coilLabel("outdoor", outdoorRole, config.coilLabels),
         });
 
+  const reversingNode =
+    reversing === "lines"
+      ? m(
+          "g.component-box",
+          {
+            key: "reversingValve",
+            "data-component": "reversingValve",
+          },
+          m(
+            "text.box-label",
+            {
+              x: circuit.reversingValve.x,
+              y: SIMPLE_BOX_LOOP_TOP - 18,
+              "text-anchor": "middle",
+              dy: "-0.15em",
+            },
+            "Reversing valve",
+          ),
+        )
+      : componentBox({
+          id: "reversingValve",
+          x: circuit.reversingValve.x,
+          y: circuit.reversingValve.y,
+          width: SIMPLE_BOX_RV_WIDTH,
+          height: SIMPLE_BOX_HEIGHT,
+          label: "Reversing valve",
+          ornament: m(
+            "g",
+            { transform: "translate(0 -17)" },
+            reversingValveSlide(heating, 14),
+          ),
+          labelDy: "1.05em",
+        });
+
   return [
     indoorNode,
     outdoorNode,
     compressorNode,
     expansionNode,
-    componentBox({
-      id: "reversingValve",
-      x: circuit.reversingValve.x,
-      y: circuit.reversingValve.y,
-      width: SIMPLE_BOX_RV_WIDTH,
-      height: SIMPLE_BOX_HEIGHT,
-      label: "Reversing valve",
-      ornament: m(
-        "g",
-        { transform: "translate(0 -17)" },
-        reversingValveSlide(heating, 14),
-      ),
-      labelDy: "1.05em",
-    }),
+    reversingNode,
   ];
 }
 
@@ -1270,24 +1564,6 @@ export function minisplitScene(config: DiagramConfig): m.Children {
       ),
     ),
 
-    layer("air-flow", [
-      airFlowFadeDefs(),
-      coilAirFlow({
-        coil: condenserCoil,
-        onLeft: condenserCoil.x < ZONE_WIDTH,
-        pointUp: condenserCoil === circuit.outdoorCoil,
-        kind: "reject",
-        indoor: condenserCoil === circuit.indoorCoil,
-      }),
-      coilAirFlow({
-        coil: evaporatorCoil,
-        onLeft: evaporatorCoil.x < ZONE_WIDTH,
-        pointUp: evaporatorCoil === circuit.outdoorCoil,
-        kind: "absorb",
-        indoor: evaporatorCoil === circuit.indoorCoil,
-      }),
-    ]),
-
     layer("equipment", [
       /* Parked abstract-icon units (canonical indoor-left, flipped as a group).
       m("g.icon-equipment", {
@@ -1357,6 +1633,7 @@ export function minisplitScene(config: DiagramConfig): m.Children {
           "symbol",
           "coil",
           "coil",
+          "lines",
         ),
       ),
       m(
@@ -1364,6 +1641,26 @@ export function minisplitScene(config: DiagramConfig): m.Children {
         { key: "simple-box-equipment" },
         boxedEquipment(circuit, config, heating, indoorRole, outdoorRole, "box"),
       ),
+    ]),
+
+    layer("air-flow", [
+      airFlowFadeDefs(),
+      coilAirFlow({
+        coil: condenserCoil,
+        onLeft: condenserCoil.x < ZONE_WIDTH,
+        pointUp: condenserCoil === circuit.outdoorCoil,
+        kind: "reject",
+        indoor: condenserCoil === circuit.indoorCoil,
+        icon: config.componentStyle === "icon",
+      }),
+      coilAirFlow({
+        coil: evaporatorCoil,
+        onLeft: evaporatorCoil.x < ZONE_WIDTH,
+        pointUp: evaporatorCoil === circuit.outdoorCoil,
+        kind: "absorb",
+        indoor: evaporatorCoil === circuit.indoorCoil,
+        icon: config.componentStyle === "icon",
+      }),
     ]),
 
     layer("labels", [
