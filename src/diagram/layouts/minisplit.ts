@@ -51,6 +51,8 @@ const SIMPLE_BOX_HEIGHT = 52;
 const SIMPLE_BOX_LOOP_TOP = 250;
 const SIMPLE_BOX_LOOP_BOTTOM = 405;
 const SIMPLE_BOX_COIL_Y = 328;
+const SIMPLE_BOX_INDOOR_CX = 145;
+const SIMPLE_BOX_OUTDOOR_CX = 840;
 const SIMPLE_BOX_MACHINE_X = 660;
 const SIMPLE_BOX_RV_WIDTH = 132;
 /** Discharge / suction stub offset from the RV center (canonical indoor-left). */
@@ -82,15 +84,24 @@ const INDOOR_COIL_RUN_WIDTH = SIMPLE_BOX_HEIGHT;
 const INDOOR_COIL_SPAN = SIMPLE_BOX_WIDTH;
 /** Canonical indoor-left house-body outer wall (screen-right when indoor is right). */
 const HOUSE_BODY_OUTER_X = 48;
+/** Indoor house body: eave/ceiling Y (raised so icon coil captions match heat-label floor gap). */
+const HOUSE_CEILING_Y = 176;
+const HOUSE_FLOOR_Y = 492;
+/** Roof peak rise above the eaves (Indoor title clears peak ≈ top edge). */
+const HOUSE_ROOF_RISE = 84;
+const HOUSE_ROOF_PEAK_Y = HOUSE_CEILING_Y - HOUSE_ROOF_RISE;
+const HOUSE_BODY_INNER_X = 412;
+const HOUSE_ROOF_LEFT_X = 36;
+const HOUSE_ROOF_RIGHT_X = 424;
+const HOUSE_ROOF_RIDGE_X = 230;
+/** Shared baseline for Indoor / Outdoor / scene caption (clears the top edge). */
+const ZONE_TITLE_Y = 52;
 /** Horizontal air-flow: stay inside the viewport after the outdoor coil (icon). */
 const ICON_AIR_EDGE_MARGIN = 20;
 /** Stop indoor outbound this far inside the house outer wall (icon). */
 const ICON_AIR_WALL_INSET = 8;
 /** Fade the last stretch of icon outbound so the dart dissolves before the wall. */
 const ICON_AIR_WALL_FADE = 36;
-/** Icon coil labels: outer top corner of the winding stack. */
-const ICON_COIL_LABEL_X_PAD = 8;
-const ICON_COIL_LABEL_Y_OFFSET = -(INDOOR_COIL_SPAN / 2) + INDOOR_COIL_CORNER_STUB;
 
 /** X along a simple-box coil. Fraction 0 is the left edge, 1 is the right. */
 function boxXAtFraction(centerX: number, fraction: number): number {
@@ -345,6 +356,13 @@ function emptyCoilSegments(): string[] {
   return Array.from({ length: INDOOR_COIL_SEGMENTS }, () => "M0,0");
 }
 
+/** Drop each piece's leading M so segments can continue an existing path. */
+function coilPathCommands(pieces: string[]): string {
+  return pieces
+    .map((piece) => piece.replace(/^M-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?\s*/, ""))
+    .join("");
+}
+
 /**
  * Tall stack of short horizontal runs, centered on `centerX`.
  * Heating winds down from the center; cooling winds up. After each loop
@@ -424,8 +442,8 @@ function simpleBoxLayout(
   showReversingValve: boolean,
   iconCoils: boolean,
 ): CircuitLayout {
-  const indoorCx = 145;
-  const outdoorCx = 840;
+  const indoorCx = SIMPLE_BOX_INDOOR_CX;
+  const outdoorCx = SIMPLE_BOX_OUTDOOR_CX;
   const indoorPipe = coilRiserX(indoorCx, !flip, flip, compact);
   const outdoorPipe = coilRiserX(outdoorCx, flip, flip, compact);
   const top = SIMPLE_BOX_LOOP_TOP;
@@ -473,6 +491,8 @@ function simpleBoxLayout(
     outdoorCoilSegments = outdoorPieces;
     const condX = heating ? indoorPipe : outdoorPipe;
     const evapX = heating ? outdoorPipe : indoorPipe;
+    const condCoil = coilPathCommands(heating ? indoorPieces : outdoorPieces);
+    const evapCoil = coilPathCommands(heating ? outdoorPieces : indoorPieces);
     if (iconRv) {
       const { uncoveredX, coveredX } = iconRv;
       const compX = Math.round((iconRv.midX + iconRv.disX) / 2);
@@ -483,13 +503,16 @@ function simpleBoxLayout(
       warm = `M${condX},${coilBot} V${bot} H${warmEnd}`;
       cold = `M${coldStart},${bot} H${evapX} V${coilBot}`;
       cool = `M${evapX},${coilTop} V${top} H${coveredX} V${iconRv.slideY} H${iconRv.midX} V${mid} H${sucJoinX}`;
-      loop = `M${disJoinX},${mid} H${iconRv.disX} V${iconRv.dInY} H${iconRv.midX} V${iconRv.chamberY} H${uncoveredX} V${top} H${condPipe} V${bot} H${evapPipe} V${top} H${coveredX} V${iconRv.slideY} H${iconRv.midX} V${mid} H${disJoinX} Z`;
+      loop = `M${disJoinX},${mid} H${iconRv.disX} V${iconRv.dInY} H${iconRv.midX} V${iconRv.chamberY} H${uncoveredX} V${top} H${condX} ${condCoil} H${evapX} ${evapCoil} H${coveredX} V${iconRv.slideY} H${iconRv.midX} V${mid} H${disJoinX} Z`;
     } else {
       hot = `M${machineX},${top} H${condX} V${coilTop}`;
       warm = `M${condX},${coilBot} V${bot} H${warmEnd}`;
       cold = `M${coldStart},${bot} H${evapX} V${coilBot}`;
       cool = `M${evapX},${coilTop} V${top} H${machineX}`;
-      loop = `M${machineX},${top} H${outdoorPipe} V${bot} H${indoorPipe} V${top} H${machineX} Z`;
+      // Flow order through serpentine coils (do not reverse in GSAP).
+      loop = heating
+        ? `M${machineX},${top} H${indoorPipe} ${condCoil} H${outdoorPipe} ${evapCoil} H${machineX} Z`
+        : `M${machineX},${top} H${outdoorPipe} ${condCoil} H${indoorPipe} ${evapCoil} H${machineX} Z`;
     }
   } else {
     indoorCoilSegments = emptyCoilSegments();
@@ -609,11 +632,12 @@ export function topologyKey(config: DiagramConfig): string {
   return `${config.showReversingValve}:${config.componentStyle}:${config.indoorSide}:${config.mode}:${config.overlays.heatTransfer}`;
 }
 
-/** Simple-box RV loops are already drawn in flow order; do not play them backwards. */
+/** Simple-box RV and icon loops are drawn in flow order; do not play them backwards. */
 export function reverseParticleLoop(config: DiagramConfig): boolean {
   return (
     config.mode === "heating" &&
-    !(usesBoxLayout(config.componentStyle) && config.showReversingValve)
+    config.componentStyle === "simpleBox" &&
+    !config.showReversingValve
   );
 }
 
@@ -646,6 +670,51 @@ function label(
     extraClass ? `text.diagram-label.${extraClass}` : "text.diagram-label",
     { x, y, "text-anchor": anchor, key },
     text,
+  );
+}
+
+/** Simple-box air-flow arc sits at 1/3 (left coil) or 2/3 (right coil) of the box. */
+function heatArrowCenterX(coilCenterX: number): number {
+  return boxXAtFraction(
+    coilCenterX,
+    coilCenterX < ZONE_WIDTH ? 1 / 3 : 2 / 3,
+  );
+}
+
+/** Same X for simple-box and icon: 1/3·2/3 of the simple-box coil, after indoor-side mirror. */
+function heatLabelX(coil: "indoor" | "outdoor", flip: boolean): number {
+  const center =
+    coil === "indoor" ? SIMPLE_BOX_INDOOR_CX : SIMPLE_BOX_OUTDOOR_CX;
+  return heatArrowCenterX(flip ? flipX(center) : center);
+}
+
+/** Dy below the expansion device center for the “Expansion valve” caption and heat labels. */
+const EXPANSION_LABEL_DY = 40;
+/** Icon compressor caption: above the trapezoid (same offset for Evap/Cond captions). */
+const COMPRESSOR_LABEL_Y = -(COMPRESSOR_TRAP_LEFT_HALF + 8);
+const COMPRESSOR_LABEL_DY = "-0.25em";
+
+function heatTransferLabel(
+  text: string,
+  x: number,
+  y: number,
+  key: string,
+): m.Vnode {
+  const words = text.split(/\s+/).filter(Boolean);
+  return m(
+    "text.diagram-label.heat-transfer-label",
+    { x, y, "text-anchor": "middle", key },
+    words.map((word, index) =>
+      m(
+        "tspan",
+        {
+          key: `${key}-${index}`,
+          x,
+          dy: index === 0 ? "0" : "1.15em",
+        },
+        word,
+      ),
+    ),
   );
 }
 
@@ -1234,10 +1303,10 @@ function houseContext(flip: boolean): m.Children {
     },
     [
       m("path.house-body", {
-        d: `M${HOUSE_BODY_OUTER_X},188 H412 V492 H${HOUSE_BODY_OUTER_X} Z`,
+        d: `M${HOUSE_BODY_OUTER_X},${HOUSE_CEILING_Y} H${HOUSE_BODY_INNER_X} V${HOUSE_FLOOR_Y} H${HOUSE_BODY_OUTER_X} Z`,
       }),
       m("path.house-roof", {
-        d: "M36,188 L230,78 L424,188 Z",
+        d: `M${HOUSE_ROOF_LEFT_X},${HOUSE_CEILING_Y} L${HOUSE_ROOF_RIDGE_X},${HOUSE_ROOF_PEAK_Y} L${HOUSE_ROOF_RIGHT_X},${HOUSE_CEILING_Y} Z`,
       }),
     ],
   );
@@ -1327,22 +1396,20 @@ function overlayBadge(
 
 function iconCoilCaption(
   id: "indoorCoil" | "outdoorCoil",
-  coil: Point,
+  coil: "indoor" | "outdoor",
   text: string,
+  flip: boolean,
+  compressorY: number,
 ): m.Vnode {
-  const onLeft = coil.x < ZONE_WIDTH;
-  const outerX = onLeft
-    ? coil.x - INDOOR_COIL_RUN_WIDTH / 2 - ICON_COIL_LABEL_X_PAD
-    : coil.x + INDOOR_COIL_RUN_WIDTH / 2 + ICON_COIL_LABEL_X_PAD;
   return m(
     "text.box-label",
     {
       key: `${id}Label`,
       "data-component": id,
-      x: outerX,
-      y: coil.y + ICON_COIL_LABEL_Y_OFFSET,
-      "text-anchor": onLeft ? "end" : "start",
-      dy: "0.35em",
+      x: heatLabelX(coil, flip),
+      y: compressorY + COMPRESSOR_LABEL_Y,
+      "text-anchor": "middle",
+      dy: COMPRESSOR_LABEL_DY,
     },
     text,
   );
@@ -1416,8 +1483,8 @@ function boxedEquipment(
               "text.box-label",
               {
                 "text-anchor": "middle",
-                y: -(COMPRESSOR_TRAP_LEFT_HALF + 8),
-                dy: "-0.25em",
+                y: COMPRESSOR_LABEL_Y,
+                dy: COMPRESSOR_LABEL_DY,
               },
               "Compressor",
             ),
@@ -1433,12 +1500,15 @@ function boxedEquipment(
           pulse: true,
         });
 
+  const flipIndoor = config.indoorSide === "right";
   const indoorNode =
     indoor === "coil"
       ? iconCoilCaption(
           "indoorCoil",
-          circuit.indoorCoil,
+          "indoor",
           coilLabel("indoor", indoorRole, config.coilLabels),
+          flipIndoor,
+          circuit.compressor.y,
         )
       : componentBox({
           id: "indoorCoil",
@@ -1453,8 +1523,10 @@ function boxedEquipment(
     outdoor === "coil"
       ? iconCoilCaption(
           "outdoorCoil",
-          circuit.outdoorCoil,
+          "outdoor",
           coilLabel("outdoor", outdoorRole, config.coilLabels),
+          flipIndoor,
+          circuit.compressor.y,
         )
       : componentBox({
           id: "outdoorCoil",
@@ -1597,17 +1669,30 @@ export function minisplitScene(config: DiagramConfig): m.Children {
       m("line.wall", { x1: ZONE_WIDTH, y1: 72, x2: ZONE_WIDTH, y2: 500 }),
       m(
         "text.zone-title",
-        { x: placeX(210), y: 54, "text-anchor": "middle" },
+        {
+          x: indoorZoneX + ZONE_WIDTH / 2,
+          y: ZONE_TITLE_Y,
+          "text-anchor": "middle",
+        },
         "Indoor",
       ),
       m(
         "text.zone-title",
-        { x: placeX(750), y: 54, "text-anchor": "middle" },
+        {
+          x: outdoorZoneX + ZONE_WIDTH / 2,
+          y: ZONE_TITLE_Y,
+          "text-anchor": "middle",
+        },
         "Outdoor",
       ),
       m(
         "text.scene-caption",
-        { "data-role": "caption", x: ZONE_WIDTH, y: 28, "text-anchor": "middle" },
+        {
+          "data-role": "caption",
+          x: ZONE_WIDTH,
+          y: ZONE_TITLE_Y,
+          "text-anchor": "middle",
+        },
         `Mini-split heat pump · ${heating ? "heating" : "cooling"}`,
       ),
     ]),
@@ -1798,7 +1883,7 @@ export function minisplitScene(config: DiagramConfig): m.Children {
       label(
         "Expansion valve",
         circuit.expansion.x,
-        circuit.expansion.y + 40,
+        circuit.expansion.y + EXPANSION_LABEL_DY,
         "middle",
       ),
       label("Vapor line", placeX(320), 206, placeAnchor("middle")),
@@ -1806,20 +1891,16 @@ export function minisplitScene(config: DiagramConfig): m.Children {
     ]),
 
     layer("heat-transfer", [
-      label(
+      heatTransferLabel(
         heatFlowLabel(indoorRole),
-        circuit.indoorCoil.x,
-        475,
-        "middle",
-        undefined,
+        heatLabelX("indoor", flip),
+        circuit.expansion.y + EXPANSION_LABEL_DY,
         "heat-indoor",
       ),
-      label(
+      heatTransferLabel(
         heatFlowLabel(outdoorRole),
-        circuit.outdoorCoil.x,
-        475,
-        "middle",
-        undefined,
+        heatLabelX("outdoor", flip),
+        circuit.expansion.y + EXPANSION_LABEL_DY,
         "heat-outdoor",
       ),
     ]),
