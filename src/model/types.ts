@@ -44,7 +44,7 @@ export function createDefaultConfig(): DiagramConfig {
   return {
     systemType: "minisplit",
     mode: "heating",
-    componentStyle: "simpleBox",
+    componentStyle: "crossSection", // temporary default while polishing cross-section art
     background: "house",
     showReversingValve: false,
     indoorSide: "right",

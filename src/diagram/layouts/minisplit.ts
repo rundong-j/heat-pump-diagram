@@ -1342,7 +1342,10 @@ function houseContext(flip: boolean): m.Children {
  * 2.5D cabinet: front rectangle plus top and right parallelograms.
  * `depthX` / `depthY` are the offset from the front face to the back edge
  * (positive depthX = right side visible; negative depthY = top rises on screen).
- * Optional `verticalAt` (0–1) draws a front-to-back compartment wall.
+ * Optional `verticalAt` (0–1) draws a filled front-to-back compartment wall.
+ * Optional `cutawayFrontFrom` (0–1) omits the front fill from that fraction to
+ * the right; the right-side front vertical is omitted so internals stay clear.
+ * Optional `bottomFace` adds a filled floor parallelogram.
  */
 function cabinet25d(opts: {
   key: string;
@@ -1353,36 +1356,104 @@ function cabinet25d(opts: {
   depthX: number;
   depthY: number;
   verticalAt?: number;
+  cutawayFrontFrom?: number;
+  bottomFace?: boolean;
 }): m.Vnode {
-  const { key, x, y, width, height, depthX, depthY, verticalAt } = opts;
+  const {
+    key,
+    x,
+    y,
+    width,
+    height,
+    depthX,
+    depthY,
+    verticalAt,
+    cutawayFrontFrom,
+    bottomFace,
+  } = opts;
   const x2 = x + width;
   const y2 = y + height;
   const tx = x + depthX;
   const ty = y + depthY;
   const tx2 = x2 + depthX;
   const ty2 = y2 + depthY;
-  const children: m.Children = [
-    m("path.cross-section-face.cross-section-face-top", {
-      key: `${key}-top`,
-      d: `M${x},${y} L${tx},${ty} L${tx2},${ty} L${x2},${y} Z`,
-    }),
-    m("path.cross-section-face.cross-section-face-side", {
+  const cutX =
+    cutawayFrontFrom != null ? x + width * cutawayFrontFrom : null;
+  const frontD =
+    cutX != null
+      ? `M${x},${y} H${cutX} V${y2} H${x} Z`
+      : `M${x},${y} H${x2} V${y2} H${x} Z`;
+  // Cutaway: omit the front-right vertical (overlaps the compressor).
+  const sideD =
+    cutX != null
+      ? `M${x2},${y} L${tx2},${ty} V${ty2} L${x2},${y2}`
+      : `M${x2},${y} L${tx2},${ty} L${tx2},${ty2} L${x2},${y2} Z`;
+  const sideClass =
+    cutX != null
+      ? "path.cross-section-face.cross-section-face-side.cross-section-face-open"
+      : "path.cross-section-face.cross-section-face-side";
+  const children: m.Children = [];
+  if (bottomFace) {
+    children.push(
+      m("path.cross-section-face.cross-section-face-bottom", {
+        key: `${key}-bottom`,
+        d: `M${x},${y2} H${x2} L${tx2},${ty2} L${tx},${ty2} Z`,
+      }),
+    );
+  }
+  children.push(
+    m(sideClass, {
       key: `${key}-side`,
-      d: `M${x2},${y} L${tx2},${ty} L${tx2},${ty2} L${x2},${y2} Z`,
+      d: sideD,
     }),
     m("path.cross-section-face.cross-section-face-front", {
       key: `${key}-front`,
-      d: `M${x},${y} H${x2} V${y2} H${x} Z`,
+      d: frontD,
     }),
-  ];
+    // Hidden back edges: left rear vertical, bottom rear, left-bottom depth.
+    m("path.cross-section-back-edges", {
+      key: `${key}-back`,
+      d: `M${tx},${ty} V${ty2} H${tx2} M${x},${y2} L${tx},${ty2}`,
+    }),
+  );
   if (verticalAt != null) {
     const vx = x + width * verticalAt;
     const vtx = vx + depthX;
+    const vty2 = y2 + depthY;
+    children.push(
+      m("path.cross-section-face.cross-section-face-divider", {
+        key: `${key}-divider-fill`,
+        d: `M${vx},${y} L${vtx},${ty} L${vtx},${vty2} L${vx},${y2} Z`,
+      }),
+    );
     // Front seam + top-face continuation (same depth as the cabinet).
     children.push(
       m("path.cross-section-divider", {
         key: `${key}-divider`,
         d: `M${vx},${y} V${y2} M${vx},${y} L${vtx},${ty}`,
+      }),
+    );
+    // Hidden divider edges: back vertical + bottom depth.
+    children.push(
+      m("path.cross-section-back-edges", {
+        key: `${key}-divider-back`,
+        d: `M${vtx},${ty} V${vty2} M${vx},${y2} L${vtx},${vty2}`,
+      }),
+    );
+  }
+  // Top after the divider so it reads above the compartment wall.
+  children.push(
+    m("path.cross-section-face.cross-section-face-top", {
+      key: `${key}-top`,
+      d: `M${x},${y} L${tx},${ty} L${tx2},${ty} L${x2},${y} Z`,
+    }),
+  );
+  if (cutX != null) {
+    // Opening rim: top front of the cut bay (bottom is the floor face edge).
+    children.push(
+      m("path.cross-section-cutaway-rim", {
+        key: `${key}-cutaway-rim`,
+        d: `M${cutX},${y} H${x2}`,
       }),
     );
   }
@@ -2034,10 +2105,15 @@ function crossSectionEquipment(flip: boolean, heating: boolean): m.Children {
   const compressorW = Math.min(rightCompartmentW - 18, 42);
   const compressorHFull = outdoorFront.height * 0.68;
   const compressorH = compressorHFull * (2 / 3);
-  const compressorCx = rightCompartmentX + rightCompartmentW / 2 - 4;
-  // Keep the previous bottom so the shortened can stays grounded.
+  // Elliptical base centers on the right-compartment floor parallelogram.
   const compressorBot =
-    outdoorFront.y + outdoorFront.height / 2 + 4 + compressorHFull / 2;
+    outdoorFront.y +
+    outdoorFront.height +
+    CROSS_SECTION_OUTDOOR_DEPTH_Y / 2;
+  const compressorCx =
+    rightCompartmentX +
+    rightCompartmentW / 2 +
+    CROSS_SECTION_OUTDOOR_DEPTH_X / 2;
   const compressorCy = compressorBot - compressorH / 2;
   // Outdoor ends sit on the right-side face centerline (mid-depth),
   // pair centered around 2/3 height from the top. Indoor-left uses the
@@ -2064,6 +2140,8 @@ function crossSectionEquipment(flip: boolean, heating: boolean): m.Children {
       depthX: CROSS_SECTION_OUTDOOR_DEPTH_X,
       depthY: CROSS_SECTION_OUTDOOR_DEPTH_Y,
       verticalAt: 2 / 3,
+      cutawayFrontFrom: 2 / 3,
+      bottomFace: true,
     }),
     crossSectionOutdoorFan(fanCx, fanCy, fanR),
     crossSectionCompressor(

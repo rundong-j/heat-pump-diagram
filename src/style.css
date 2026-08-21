@@ -653,11 +653,40 @@ body {
   fill: color-mix(in srgb, var(--unit-fill) 72%, var(--unit-stroke));
 }
 
+.cross-section-face-bottom {
+  fill: color-mix(in srgb, var(--unit-fill) 65%, var(--unit-stroke));
+}
+
+.cross-section-face-divider {
+  fill: color-mix(in srgb, var(--unit-fill) 78%, var(--unit-stroke));
+}
+
+.cross-section-face-open {
+  fill: none;
+}
+
+.cross-section-cutaway-rim {
+  fill: none;
+  stroke: var(--unit-stroke);
+  stroke-width: 1.6;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
 .cross-section-divider {
   fill: none;
   stroke: var(--unit-stroke);
   stroke-width: 1.6;
   stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+.cross-section-back-edges {
+  fill: none;
+  stroke: var(--unit-stroke);
+  stroke-width: 1.4;
+  stroke-dasharray: 4 4;
+  stroke-linecap: butt;
   stroke-linejoin: miter;
 }
 
