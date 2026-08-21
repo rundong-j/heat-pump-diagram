@@ -658,6 +658,23 @@ function particles(): m.Children {
   return arrows;
 }
 
+const LINESET_PARTICLES_PER_PIPE = 4;
+
+function linesetParticles(groupKey: string): m.Vnode {
+  const arrows: m.Children[] = [];
+  for (let i = 0; i < LINESET_PARTICLES_PER_PIPE; i += 1) {
+    arrows.push(
+      m("polygon.particle", {
+        key: `ls-${groupKey}-${i}`,
+        points: PARTICLE_ARROW_POINTS,
+      }),
+    );
+  }
+  return m(`g.lineset-particles.lineset-particles-${groupKey}`, {
+    key: `particles-${groupKey}`,
+  }, arrows);
+}
+
 function label(
   text: string,
   x: number,
@@ -964,7 +981,16 @@ function coilAirFlow(opts: {
   indoor?: boolean;
   icon?: boolean;
   iconTrack?: IconAirTrack;
+  crossSection?: boolean;
+  flip?: boolean;
 }): m.Vnode {
+  if (opts.crossSection) {
+    return coilAirFlowCrossSection({
+      kind: opts.kind,
+      indoor: opts.indoor,
+      flip: opts.flip === true,
+    });
+  }
   if (opts.icon && opts.iconTrack) {
     return coilAirFlowIcon({ ...opts, iconTrack: opts.iconTrack });
   }
@@ -1366,13 +1392,19 @@ function cabinet25d(opts: {
 /** Outdoor condenser front: 4:3 (real mini-split pad unit is low and wide). */
 const CROSS_SECTION_OUTDOOR_W = 224;
 const CROSS_SECTION_OUTDOOR_H = (CROSS_SECTION_OUTDOOR_W * 3) / 4;
-/** Keep the previous tall cabinet’s bottom so the shortened unit stays grounded. */
-const CROSS_SECTION_OUTDOOR_BOTTOM = 168 + 248;
+/** Front-face bottom sits on the house floor. */
+const CROSS_SECTION_OUTDOOR_BOTTOM = HOUSE_FLOOR_Y;
 /** Horizontal centers from the original 168-wide placement (left / right outdoor). */
 const CROSS_SECTION_OUTDOOR_CX_LEFT = 148 + 168 / 2;
 const CROSS_SECTION_OUTDOOR_CX_RIGHT = 644 + 168 / 2;
 const CROSS_SECTION_OUTDOOR_DEPTH_X = 48;
 const CROSS_SECTION_OUTDOOR_DEPTH_Y = -35;
+const CROSS_SECTION_INDOOR_DEPTH_X = 28;
+const CROSS_SECTION_INDOOR_DEPTH_Y = -20;
+/** Horizontal offset from the zone wall to the nearer (bottom) vertical riser. */
+const CROSS_SECTION_LINESET_WALL_PAD = 12;
+/** Centerline gap for the parallel pair (same on horizontals and verticals). */
+const CROSS_SECTION_LINESET_PAIR_GAP = 14;
 /** Fan fills the left (coil) compartment with a small margin. */
 const CROSS_SECTION_OUTDOOR_FAN_PAD = 14;
 /** Indoor cross-flow blower: vertical pitch of the moving slot pattern. */
@@ -1624,11 +1656,70 @@ function crossSectionIndoorBlower(
   ]);
 }
 
-/** Outdoor condenser + indoor head-unit shells for cross-section style. */
-function crossSectionEquipment(flip: boolean): m.Children {
-  // Screen-space placement: outdoor half / indoor half (inside the house body).
-  // Front + top + right-side parallelograms (depth always up and to the right).
-  // `flip` means indoor is on the right (outdoor left).
+/**
+ * Two square-elbow line-set runs. Path direction is screen-space flow
+ * (left-bound vs right-bound). Heating: warm / hot. Cooling: cool / cold.
+ */
+function linesetRunD(
+  outX: number,
+  inX: number,
+  outY: number,
+  inY: number,
+  elbowX: number,
+  rightBound: boolean,
+): string {
+  const outToIn = rightBound === inX > outX;
+  return outToIn
+    ? `M${outX},${outY} H${elbowX} V${inY} H${inX}`
+    : `M${inX},${inY} H${elbowX} V${outY} H${outX}`;
+}
+
+function crossSectionLineSet(
+  outX: number,
+  inX: number,
+  outTopY: number,
+  inTopY: number,
+  elbowTopX: number,
+  elbowBotX: number,
+  heating: boolean,
+): m.Vnode {
+  const gap = CROSS_SECTION_LINESET_PAIR_GAP;
+  const outBotY = outTopY + gap;
+  const inBotY = inTopY + gap;
+  const topKind = heating ? "warm" : "cool";
+  const botKind = heating ? "hot" : "cold";
+  return m("g.cross-section-lineset", { key: "lineset" }, [
+    m(`path.pipe.pipe-${topKind}`, {
+      key: "top",
+      d: linesetRunD(outX, inX, outTopY, inTopY, elbowTopX, false),
+      fill: "none",
+    }),
+    m(`path.pipe.pipe-${botKind}`, {
+      key: "bot",
+      d: linesetRunD(outX, inX, outBotY, inBotY, elbowBotX, true),
+      fill: "none",
+    }),
+    linesetParticles("top"),
+    linesetParticles("bot"),
+    dashArrowGroups(),
+  ]);
+}
+
+type CrossSectionFront = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+function crossSectionLayout(flip: boolean): {
+  outdoorFront: CrossSectionFront;
+  indoorFront: CrossSectionFront;
+  fanCx: number;
+  fanCy: number;
+  fanR: number;
+  blower: { x: number; y: number; w: number; h: number };
+} {
   const outdoorY = CROSS_SECTION_OUTDOOR_BOTTOM - CROSS_SECTION_OUTDOOR_H;
   const outdoorCx = flip
     ? CROSS_SECTION_OUTDOOR_CX_LEFT
@@ -1640,13 +1731,306 @@ function crossSectionEquipment(flip: boolean): m.Children {
     height: CROSS_SECTION_OUTDOOR_H,
   };
   const leftCompartmentW = outdoorFront.width * (2 / 3);
-  const rightCompartmentX = outdoorFront.x + leftCompartmentW;
-  const rightCompartmentW = outdoorFront.width - leftCompartmentW;
   const fanCx = outdoorFront.x + leftCompartmentW / 2;
   const fanCy = outdoorFront.y + outdoorFront.height / 2;
   const fanR =
     Math.min(leftCompartmentW, outdoorFront.height) / 2 -
     CROSS_SECTION_OUTDOOR_FAN_PAD;
+  const indoorFront = flip
+    ? { x: 618, y: 248, width: 210, height: 88 }
+    : { x: 132, y: 248, width: 210, height: 88 };
+  const blowerPadX = 12;
+  const blowerPadY = 14;
+  return {
+    outdoorFront,
+    indoorFront,
+    fanCx,
+    fanCy,
+    fanR,
+    blower: {
+      x: indoorFront.x + blowerPadX,
+      y: indoorFront.y + blowerPadY,
+      w: indoorFront.width - blowerPadX * 2 - 6,
+      h: indoorFront.height - blowerPadY * 2,
+    },
+  };
+}
+
+function diagonalAxes(
+  dx: number,
+  dy: number,
+): { ux: number; uy: number; px: number; py: number; len: number } {
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  return { ux, uy, px: -uy, py: ux, len };
+}
+
+function diagonalCenterline(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+): string {
+  return `M${x0.toFixed(2)},${y0.toFixed(2)} L${x1.toFixed(2)},${y1.toFixed(2)}`;
+}
+
+function diagonalShaftClip(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  hs: number,
+): string {
+  const { px, py } = diagonalAxes(x1 - x0, y1 - y0);
+  const ox = px * hs;
+  const oy = py * hs;
+  return [
+    `M${(x0 + ox).toFixed(2)},${(y0 + oy).toFixed(2)}`,
+    `L${(x1 + ox).toFixed(2)},${(y1 + oy).toFixed(2)}`,
+    `L${(x1 - ox).toFixed(2)},${(y1 - oy).toFixed(2)}`,
+    `L${(x0 - ox).toFixed(2)},${(y0 - oy).toFixed(2)}`,
+    "Z",
+  ].join(" ");
+}
+
+function diagonalArrowPath(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  hs: number,
+  hw: number,
+  hl: number,
+): string {
+  const { ux, uy, px, py, len } = diagonalAxes(x1 - x0, y1 - y0);
+  const head = Math.min(hl, len * 0.45);
+  const bx = x1 - ux * head;
+  const by = y1 - uy * head;
+  const r = roundCoord;
+  return [
+    `M${r(x0 + px * hs)},${r(y0 + py * hs)}`,
+    `L${r(bx + px * hs)},${r(by + py * hs)}`,
+    `L${r(bx + px * hw)},${r(by + py * hw)}`,
+    `L${r(x1)},${r(y1)}`,
+    `L${r(bx - px * hw)},${r(by - py * hw)}`,
+    `L${r(bx - px * hs)},${r(by - py * hs)}`,
+    `L${r(x0 - px * hs)},${r(y0 - py * hs)}`,
+    "Z",
+  ].join(" ");
+}
+
+/**
+ * Cross-section heat-transfer darts: one 45° down-left line through each
+ * fan. Inbound ends on the top parallelogram’s far edge (indoor starts at
+ * the ceiling); outbound continues from the fan — outdoor to the diagram
+ * bottom, indoor matched to that same length.
+ */
+function coilAirFlowCrossSection(opts: {
+  kind: AirFlowKind;
+  indoor?: boolean;
+  flip: boolean;
+}): m.Vnode {
+  const { kind, indoor, flip } = opts;
+  const layout = crossSectionLayout(flip);
+  const hs = AIR_FLOW_SHAFT / 2;
+  const hw = AIR_FLOW_HEAD_WIDTH / 2;
+  const hl = AIR_FLOW_HEAD_HEIGHT;
+  const fx = indoor
+    ? layout.blower.x + layout.blower.w / 2
+    : layout.fanCx;
+  const fy = indoor
+    ? layout.blower.y + layout.blower.h / 2
+    : layout.fanCy;
+  // One 45° down-left line (x + y = c) through the fan so in/out look continuous.
+  const c = fx + fy;
+  const box = indoor ? layout.indoorFront : layout.outdoorFront;
+  const depthY = indoor
+    ? CROSS_SECTION_INDOOR_DEPTH_Y
+    : CROSS_SECTION_OUTDOOR_DEPTH_Y;
+  // Far edge of the top parallelogram (not the front face top).
+  const in1y = box.y + depthY;
+  const in1x = c - in1y;
+  let in0y: number;
+  let in0x: number;
+  if (indoor) {
+    in0y = HOUSE_CEILING_Y;
+    in0x = c - in0y;
+  } else {
+    const inSpan = Math.max(56, layout.indoorFront.y - HOUSE_CEILING_Y);
+    in0y = in1y - inSpan;
+    in0x = in1x + inSpan;
+  }
+  if (in0x > VIEWPORT_WIDTH - 12) {
+    const shift = in0x - (VIEWPORT_WIDTH - 12);
+    in0x -= shift;
+    in0y += shift;
+  }
+  if (in0y < 8) {
+    const shift = 8 - in0y;
+    in0y += shift;
+    in0x -= shift;
+  }
+  // Outdoor outbound reaches the diagram bottom; indoor matches that length.
+  const outdoorOutSpan = VIEWPORT_HEIGHT - layout.fanCy;
+  const outSpan = outdoorOutSpan;
+  const out0x = fx;
+  const out0y = fy;
+  const out1x = out0x - outSpan;
+  const out1y = out0y + outSpan;
+
+  const inboundPath = diagonalCenterline(in0x, in0y, in1x, in1y);
+  const outboundPath = diagonalCenterline(out0x, out0y, out1x, out1y);
+  const inboundClip = diagonalShaftClip(in0x, in0y, in1x, in1y, hs);
+  const outboundClip = diagonalShaftClip(out0x, out0y, out1x, out1y, hs);
+  const inboundLen = Math.hypot(in1x - in0x, in1y - in0y);
+  const outboundLen = Math.hypot(out1x - out0x, out1y - out0y);
+  const gap = Math.hypot(out0x - in1x, out0y - in1y);
+  const { gradientId, groupKey, tailStop, tipStop } = airFlowKindMeta(kind);
+  const inFadeId = `${groupKey}-cs-fade-in`;
+  const outFadeId = `${groupKey}-cs-fade-out`;
+  const inMaskId = `${groupKey}-cs-mask-in`;
+  const outMaskId = `${groupKey}-cs-mask-out`;
+  const inFadeOut = Math.min(36, inboundLen * 0.4);
+  const outFadeOut = Math.min(
+    indoor ? 48 : 40,
+    Math.max(hl, outboundLen * 0.4),
+  );
+
+  return m(
+    `g.${groupKey}${indoor ? ".air-flow-indoor" : ".air-flow-outdoor"}`,
+    { key: groupKey, "data-air-gap": String(gap) },
+    [
+      m("defs", { key: `${groupKey}-defs` }, [
+        m(
+          "linearGradient",
+          {
+            key: `${groupKey}-grad`,
+            id: gradientId,
+            gradientUnits: "userSpaceOnUse",
+            x1: String(in0x),
+            y1: String(in0y),
+            x2: String(out1x),
+            y2: String(out1y),
+          },
+          [
+            m(`stop.${tailStop}`, {
+              offset: "0%",
+              "stop-opacity": "0",
+            }),
+            m(`stop.${tipStop}`, {
+              offset: "45%",
+              "stop-opacity": "1",
+            }),
+          ],
+        ),
+        m(
+          "linearGradient",
+          {
+            key: inFadeId,
+            id: inFadeId,
+            gradientUnits: "userSpaceOnUse",
+            x1: String(in0x),
+            y1: String(in0y),
+            x2: String(in1x),
+            y2: String(in1y),
+          },
+          fadeStopsAlong(inboundLen, hl, inFadeOut),
+        ),
+        m(
+          "linearGradient",
+          {
+            key: outFadeId,
+            id: outFadeId,
+            gradientUnits: "userSpaceOnUse",
+            x1: String(out0x),
+            y1: String(out0y),
+            x2: String(out1x),
+            y2: String(out1y),
+          },
+          fadeStopsAlong(outboundLen, hl * 0.7, outFadeOut),
+        ),
+        m(
+          "mask",
+          {
+            key: inMaskId,
+            id: inMaskId,
+            maskUnits: "userSpaceOnUse",
+            maskContentUnits: "userSpaceOnUse",
+          },
+          m("rect", {
+            x: 0,
+            y: 0,
+            width: VIEWPORT_WIDTH,
+            height: VIEWPORT_HEIGHT,
+            fill: `url(#${inFadeId})`,
+          }),
+        ),
+        m(
+          "mask",
+          {
+            key: outMaskId,
+            id: outMaskId,
+            maskUnits: "userSpaceOnUse",
+            maskContentUnits: "userSpaceOnUse",
+          },
+          m("rect", {
+            x: 0,
+            y: 0,
+            width: VIEWPORT_WIDTH,
+            height: VIEWPORT_HEIGHT,
+            fill: `url(#${outFadeId})`,
+          }),
+        ),
+        m(
+          "clipPath",
+          {
+            key: `${groupKey}-clip-in`,
+            id: `air-flow-clip-${kind}-in`,
+            clipPathUnits: "userSpaceOnUse",
+          },
+          m("path", { key: `${groupKey}-clip-path-in`, d: inboundClip }),
+        ),
+        m(
+          "clipPath",
+          {
+            key: `${groupKey}-clip-out`,
+            id: `air-flow-clip-${kind}-out`,
+            clipPathUnits: "userSpaceOnUse",
+          },
+          m("path", { key: `${groupKey}-clip-path-out`, d: outboundClip }),
+        ),
+      ]),
+      m(`path.air-flow-arrow.air-flow-arrow-${kind}`, {
+        key: `${groupKey}-arrow-in`,
+        d: diagonalArrowPath(in0x, in0y, in1x, in1y, hs, hw, hl),
+      }),
+      m(`path.air-flow-arrow.air-flow-arrow-${kind}`, {
+        key: `${groupKey}-arrow-out`,
+        d: diagonalArrowPath(out0x, out0y, out1x, out1y, hs, hw, hl),
+      }),
+      airFlowDartGroup(kind, groupKey, "in", inboundPath, `url(#${inMaskId})`),
+      airFlowDartGroup(kind, groupKey, "out", outboundPath, `url(#${outMaskId})`),
+    ],
+  );
+}
+
+/** Outdoor condenser + indoor head-unit shells for cross-section style. */
+function crossSectionEquipment(flip: boolean, heating: boolean): m.Children {
+  // Screen-space placement: outdoor half / indoor half (inside the house body).
+  // Front + top + right-side parallelograms (depth always up and to the right).
+  // `flip` means indoor is on the right (outdoor left).
+  const {
+    outdoorFront,
+    indoorFront,
+    fanCx,
+    fanCy,
+    fanR,
+    blower,
+  } = crossSectionLayout(flip);
+  const leftCompartmentW = outdoorFront.width * (2 / 3);
+  const rightCompartmentX = outdoorFront.x + leftCompartmentW;
+  const rightCompartmentW = outdoorFront.width - leftCompartmentW;
   const compressorW = Math.min(rightCompartmentW - 18, 42);
   const compressorHFull = outdoorFront.height * 0.68;
   const compressorH = compressorHFull * (2 / 3);
@@ -1655,17 +2039,23 @@ function crossSectionEquipment(flip: boolean): m.Children {
   const compressorBot =
     outdoorFront.y + outdoorFront.height / 2 + 4 + compressorHFull / 2;
   const compressorCy = compressorBot - compressorH / 2;
-  const indoorFront = flip
-    ? { x: 618, y: 248, width: 210, height: 88 }
-    : { x: 132, y: 248, width: 210, height: 88 };
-  const blowerPadX = 12;
-  const blowerPadY = 14;
-  const blower = {
-    x: indoorFront.x + blowerPadX,
-    y: indoorFront.y + blowerPadY,
-    w: indoorFront.width - blowerPadX * 2 - 6,
-    h: indoorFront.height - blowerPadY * 2,
-  };
+  // Outdoor ends sit on the right-side face centerline (mid-depth),
+  // pair centered around 2/3 height from the top. Indoor-left uses the
+  // front-left edge at the same height.
+  const outdoorOnLeft = flip;
+  const outX = outdoorOnLeft
+    ? outdoorFront.x + outdoorFront.width + CROSS_SECTION_OUTDOOR_DEPTH_X / 2
+    : outdoorFront.x;
+  const inX = outdoorOnLeft
+    ? indoorFront.x
+    : indoorFront.x + indoorFront.width + CROSS_SECTION_INDOOR_DEPTH_X;
+  const outTopY =
+    outdoorFront.y +
+    outdoorFront.height * (2 / 3) -
+    CROSS_SECTION_LINESET_PAIR_GAP / 2;
+  const inTopY = indoorFront.y + indoorFront.height * 0.28;
+  const elbowBotX = ZONE_WIDTH - CROSS_SECTION_LINESET_WALL_PAD;
+  const elbowTopX = elbowBotX - CROSS_SECTION_LINESET_PAIR_GAP;
 
   return [
     cabinet25d({
@@ -1684,11 +2074,20 @@ function crossSectionEquipment(flip: boolean): m.Children {
       CROSS_SECTION_COMPRESSOR_DEPTH_X,
       CROSS_SECTION_COMPRESSOR_DEPTH_Y,
     ),
+    crossSectionLineSet(
+      outX,
+      inX,
+      outTopY,
+      inTopY,
+      elbowTopX,
+      elbowBotX,
+      heating,
+    ),
     cabinet25d({
       key: "indoor-cabinet",
       ...indoorFront,
-      depthX: 28,
-      depthY: -20,
+      depthX: CROSS_SECTION_INDOOR_DEPTH_X,
+      depthY: CROSS_SECTION_INDOOR_DEPTH_Y,
     }),
     crossSectionIndoorBlower(
       blower.x,
@@ -2218,7 +2617,7 @@ export function minisplitScene(config: DiagramConfig): m.Children {
       m(
         "g.cross-section-equipment",
         { key: "cross-section-equipment" },
-        crossSectionEquipment(flip),
+        crossSectionEquipment(flip, heating),
       ),
     ]),
 
@@ -2235,6 +2634,8 @@ export function minisplitScene(config: DiagramConfig): m.Children {
           condenserCoil === circuit.indoorCoil
             ? iconTracks?.indoor
             : iconTracks?.outdoor,
+        crossSection: config.componentStyle === "crossSection",
+        flip,
       }),
       coilAirFlow({
         coil: evaporatorCoil,
@@ -2247,6 +2648,8 @@ export function minisplitScene(config: DiagramConfig): m.Children {
           evaporatorCoil === circuit.indoorCoil
             ? iconTracks?.indoor
             : iconTracks?.outdoor,
+        crossSection: config.componentStyle === "crossSection",
+        flip,
       }),
     ]),
 

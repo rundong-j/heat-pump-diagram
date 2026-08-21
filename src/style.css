@@ -347,6 +347,10 @@ body {
   display: inline;
 }
 
+.diagram-scene[data-component-style="crossSection"] .layer-circuit .pipe-dash-arrows {
+  display: none;
+}
+
 .pipe-dash-arrow {
   stroke: none;
 }
@@ -391,6 +395,16 @@ body {
   stroke-width: 1;
   stroke-linejoin: miter;
   will-change: transform;
+}
+
+.diagram-scene:not([data-line-style="solid"]) .cross-section-lineset .particle {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cross-section-lineset .particle {
+    visibility: hidden;
+  }
 }
 
 /* Parked abstract-icon unit/fan/TXV styles. Simple-box compressor-pulse stays live.
@@ -740,7 +754,6 @@ body {
 .diagram-scene[data-component-style="crossSection"] .layer-circuit,
 .diagram-scene[data-component-style="crossSection"] .layer-particles,
 .diagram-scene[data-component-style="crossSection"] .layer-arrows,
-.diagram-scene[data-component-style="crossSection"] .layer-air-flow,
 .diagram-scene[data-component-style="crossSection"] .layer-heat-transfer {
   visibility: hidden;
 }

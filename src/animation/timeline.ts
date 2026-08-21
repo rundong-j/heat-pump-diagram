@@ -40,22 +40,25 @@ function refreshAnimCache(svg: SVGSVGElement): void {
     svg,
     pipes: [...svg.querySelectorAll(".pipe")],
     dashTracks: PIPE_COLOR_IDS.flatMap((id) => {
-      const path = svg.querySelector<SVGPathElement>(`.pipe-${id}`);
-      if (!path) {
-        return [];
-      }
-      return [
-        {
-          path,
-          marks: [
-            ...svg.querySelectorAll<SVGPolygonElement>(
-              `.pipe-dash-arrows-${id} .pipe-dash-arrow`,
-            ),
-          ],
-          pathLen: path.getTotalLength(),
-          high: id === "hot" || id === "warm",
-        },
-      ];
+      const cross = svg.dataset.componentStyle === "crossSection";
+      const paths = [
+        ...svg.querySelectorAll<SVGPathElement>(`.pipe-${id}`),
+      ].filter((path) => !cross || !path.closest(".layer-circuit"));
+      const groups = [
+        ...svg.querySelectorAll<SVGGElement>(`.pipe-dash-arrows-${id}`),
+      ].filter((group) => !cross || !group.closest(".layer-circuit"));
+      return paths.map((path, index) => ({
+        path,
+        marks: groups[index]
+          ? [
+              ...groups[index].querySelectorAll<SVGPolygonElement>(
+                ".pipe-dash-arrow",
+              ),
+            ]
+          : [],
+        pathLen: path.getTotalLength(),
+        high: id === "hot" || id === "warm",
+      }));
     }),
     coils: AIR_FLOW_KINDS.map((kind) => coilAirEls(svg, kind)),
   };
@@ -89,7 +92,9 @@ export class SceneAnimation {
       this.airFlow = null;
       this.machines = null;
       gsap.set(svg.querySelector("[data-role='particles']"), { autoAlpha: 0 });
-      gsap.set(svg.querySelector("[data-role='static-arrows']"), { autoAlpha: 1 });
+      gsap.set(svg.querySelector("[data-role='static-arrows']"), {
+        autoAlpha: config.componentStyle === "crossSection" ? 0 : 1,
+      });
       refreshAnimCache(svg);
       applyDashOffset(svg, 0);
       layoutAirFlow(svg, 0);
@@ -97,7 +102,7 @@ export class SceneAnimation {
     });
 
     this.mm.add("(prefers-reduced-motion: no-preference)", () => {
-      this.applyParticleVisibility(config.lineStyle);
+      this.applyParticleVisibility(config);
       refreshAnimCache(svg);
       this.machines = buildMachineTimeline(svg);
       this.flow = buildFlowTimeline(svg, reverseParticleLoop(config));
@@ -133,7 +138,11 @@ export class SceneAnimation {
     const airFlow = this.svg.querySelector("[data-role='air-flow']");
 
     labels?.classList.toggle("is-hidden", !config.overlays.labels || boxed);
-    arrows?.classList.toggle("is-hidden", !(config.overlays.direction || reduced));
+    arrows?.classList.toggle(
+      "is-hidden",
+      config.componentStyle === "crossSection" ||
+        !(config.overlays.direction || reduced),
+    );
     heatTransfer?.classList.toggle("is-hidden", !config.overlays.heatTransfer);
     airFlow?.classList.toggle("is-hidden", !config.overlays.heatTransfer);
     this.svg.classList.toggle("labels-off", !config.overlays.labels);
@@ -146,7 +155,7 @@ export class SceneAnimation {
     this.svg.dataset.lineWidth = config.lineWidth;
     this.svg.dataset.heatTransfer = config.overlays.heatTransfer ? "on" : "off";
     if (!reduced) {
-      this.applyParticleVisibility(config.lineStyle);
+      this.applyParticleVisibility(config);
     }
     if (config.lineStyle !== "arrow") {
       hideDashArrows(this.svg);
@@ -219,12 +228,14 @@ export class SceneAnimation {
     animCache = null;
   }
 
-  private applyParticleVisibility(lineStyle: DiagramConfig["lineStyle"]): void {
+  private applyParticleVisibility(config: DiagramConfig): void {
     if (!this.svg) {
       return;
     }
+    const showLoopParticles =
+      config.lineStyle === "solid" && config.componentStyle !== "crossSection";
     gsap.set(this.svg.querySelector("[data-role='particles']"), {
-      autoAlpha: lineStyle === "solid" ? 1 : 0,
+      autoAlpha: showLoopParticles ? 1 : 0,
     });
   }
 
@@ -235,35 +246,76 @@ export class SceneAnimation {
   }
 }
 
+function addMotionPath(
+  tl: gsap.core.Timeline,
+  particle: Element,
+  path: SVGPathElement,
+  duration: number,
+  offset: number,
+  reversed: boolean,
+): void {
+  tl.to(
+    particle,
+    {
+      duration,
+      ease: "none",
+      motionPath: {
+        path,
+        align: path,
+        alignOrigin: [0.5, 0.5],
+        autoRotate: true,
+        start: offset,
+        end: reversed ? offset - 1 : offset + 1,
+      },
+    },
+    0,
+  );
+}
+
 function buildFlowTimeline(svg: SVGSVGElement, reversed: boolean): gsap.core.Timeline {
-  const loop = svg.querySelector<SVGPathElement>("#refrigerant-loop");
-  const particles = svg.querySelectorAll(".particle");
   const tl = gsap.timeline({
     paused: true,
     repeat: -1,
   });
 
+  if (svg.dataset.componentStyle === "crossSection") {
+    const loop = svg.querySelector<SVGPathElement>("#refrigerant-loop");
+    const loopLen = loop?.getTotalLength() ?? 0;
+    const speed = loopLen > 0 ? loopLen / LOOP_SECONDS : 1;
+    const pipes = [
+      ...svg.querySelectorAll<SVGPathElement>(".cross-section-lineset path.pipe"),
+    ];
+    const groups = [
+      ...svg.querySelectorAll(".cross-section-lineset .lineset-particles"),
+    ];
+    pipes.forEach((path, index) => {
+      const marks = groups[index]?.querySelectorAll(".particle") ?? [];
+      const pathLen = path.getTotalLength();
+      if (pathLen < 2 || marks.length === 0) {
+        return;
+      }
+      const duration = pathLen / speed;
+      marks.forEach((particle, i) => {
+        addMotionPath(tl, particle, path, duration, i / marks.length, false);
+      });
+    });
+    return tl;
+  }
+
+  const loop = svg.querySelector<SVGPathElement>("#refrigerant-loop");
+  const particles = svg.querySelectorAll(".layer-particles .particle");
   if (!loop || particles.length === 0) {
     return tl;
   }
 
   particles.forEach((particle, index) => {
-    const offset = index / particles.length;
-    tl.to(
+    addMotionPath(
+      tl,
       particle,
-      {
-        duration: LOOP_SECONDS,
-        ease: "none",
-        motionPath: {
-          path: loop,
-          align: loop,
-          alignOrigin: [0.5, 0.5],
-          autoRotate: true,
-          start: offset,
-          end: reversed ? offset - 1 : offset + 1,
-        },
-      },
-      0,
+      loop,
+      LOOP_SECONDS,
+      index / particles.length,
+      reversed,
     );
   });
 

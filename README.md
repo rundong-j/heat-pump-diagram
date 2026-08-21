@@ -9,14 +9,14 @@ Thermodynamic values are illustrative teaching aids, not a refrigerant property 
 ## Features
 
 - Mini-split cooling and heating modes with animated refrigerant flow
-- Component style: simple box (default), abstract icon (serpentine coils that solid-style arrows follow, schematic compressor / expansion valve, and a four-way reversing-valve cross-section when the valve is on), or cross-section (2.5D outdoor/indoor cabinets with outdoor axial fan + compressor can and indoor cross-flow blower)
+- Component style: simple box (default), abstract icon (serpentine coils that solid-style arrows follow, schematic compressor / expansion valve, and a four-way reversing-valve cross-section when the valve is on), or cross-section (2.5D outdoor/indoor cabinets with outdoor axial fan + compressor can, indoor cross-flow blower, temperature-colored line-set between units, and 45° heat-transfer darts)
 - Line style: solid pipes with traveling arrows, marching dashes (default), or flow arrowheads
 - Line color: four-stop temperature scale (default) or constant house-outline stroke
 - Line width & spacing: pressure-based (default; thick/short high-side, thin/regular low-side) or uniform
 - Light/dark theme, XL default font, indoor unit left or right
 - Optional house outline with outdoor weather and warm/cool zone fills
 - Overlays for labels, direction, pressure, temperature, and phase
-- Heat transfer overlay (on by default): two-line Heat absorbed / Heat rejected labels aligned under each air-flow arc, plus two-dart air-flow through each coil (curved vertical in simple box, straight horizontal inside→outside in abstract icon); pause mid-cycle for a full through-coil arrow; the loop insets to leave room for them
+- Heat transfer overlay (on by default): two-line Heat absorbed / Heat rejected labels aligned under each air-flow arc (hidden in cross-section), plus two-dart air-flow through each coil (curved vertical in simple box, straight horizontal inside→outside in abstract icon, 45° down-left through each fan in cross-section); pause mid-cycle for a full through-coil arrow; the loop insets to leave room for them in simple box
 - Play/pause, playback speed, and 4K JPEG screenshot (save dialog)
 
 ## Local development
@@ -55,11 +55,11 @@ src/
 
 ## Defaults
 
-On first load: mini-split, heating, simple box, light theme, house & weather, indoor unit on the right, role-based coil labels (Evaporator / Condenser), XL font, dashed lines, temperature-based color, pressure-based width & spacing, heat transfer on. Toggle **Component style** to Abstract icon for winding coils and a line-drawn four-way reversing-valve, or Cross-section for 2.5D cabinets with outdoor fan/compressor and indoor blower.
+On first load: mini-split, heating, simple box, light theme, house & weather, indoor unit on the right, role-based coil labels (Evaporator / Condenser), XL font, dashed lines, temperature-based color, pressure-based width & spacing, heat transfer on. Toggle **Component style** to Abstract icon for winding coils and a line-drawn four-way reversing-valve, or Cross-section for 2.5D cabinets, line-set pipes, and diagonal heat-transfer darts.
 
 ## Roadmap
 
 - Ducted-split layout
-- Cross-section coil/pipe anchors and sketch art (cabinets + unit internals started; abstract icon in progress)
+- Cross-section coil internals and sketch art (cabinets, line-set, and heat darts started; abstract icon in progress)
 - URL-serialized config and SVG/PNG export
 - PowerPoint content add-in host
