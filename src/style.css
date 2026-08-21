@@ -732,6 +732,36 @@ body {
   stroke-linecap: round;
 }
 
+.cross-section-expansion-base {
+  fill: color-mix(in srgb, var(--machine-fill) 72%, var(--unit-stroke));
+  stroke: none;
+}
+
+.cross-section-expansion-front {
+  fill: var(--machine-fill);
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+  stroke-linejoin: miter;
+}
+
+.cross-section-expansion-top {
+  fill: color-mix(in srgb, var(--machine-fill) 88%, var(--unit-stroke));
+  stroke: none;
+}
+
+.cross-section-expansion-top-rim {
+  fill: none;
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+}
+
+.cross-section-expansion-base-rim {
+  fill: none;
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
 .cross-section-blower-body,
 .cross-section-blower-end {
   fill: color-mix(in srgb, var(--unit-fill) 82%, var(--unit-stroke));

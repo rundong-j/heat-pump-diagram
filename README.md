@@ -9,7 +9,7 @@ Thermodynamic values are illustrative teaching aids, not a refrigerant property 
 ## Features
 
 - Mini-split cooling and heating modes with animated refrigerant flow
-- Component style: simple box, abstract icon (serpentine coils that solid-style arrows follow, schematic compressor / expansion valve, and a four-way reversing-valve cross-section when the valve is on), or cross-section (temporary default while polishing: 2.5D outdoor/indoor cabinets with outdoor right-bay cutaway + axial fan + compressor can, indoor cross-flow blower, temperature-colored line-set between units, and 45° heat-transfer darts)
+- Component style: simple box, abstract icon (serpentine coils that solid-style arrows follow, schematic compressor / expansion valve, and a four-way reversing-valve cross-section when the valve is on), or cross-section (temporary default while polishing: 2.5D outdoor/indoor cutaway cabinets with outdoor axial fan + compressor + expansion-valve cylinder, indoor cross-flow blower, temperature-colored line-set between units, and 45° heat-transfer darts)
 - Line style: solid pipes with traveling arrows, marching dashes (default), or flow arrowheads
 - Line color: four-stop temperature scale (default) or constant house-outline stroke
 - Line width & spacing: pressure-based (default; thick/short high-side, thin/regular low-side) or uniform
@@ -60,6 +60,6 @@ On first load: mini-split, heating, **cross-section** (temporary; restore simple
 ## Roadmap
 
 - Ducted-split layout
-- Cross-section coil internals and sketch art (cabinets, right-bay cutaway, line-set, and heat darts started; abstract icon in progress); restore simple-box default when polish is done
+- Cross-section coil internals and sketch art (cabinets, right-bay cutaway, compressor + expansion valve, line-set, and heat darts started; abstract icon in progress); restore simple-box default when polish is done
 - URL-serialized config and SVG/PNG export
 - PowerPoint content add-in host

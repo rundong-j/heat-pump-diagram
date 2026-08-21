@@ -1486,7 +1486,9 @@ const CROSS_SECTION_INDOOR_DEPTH_Y = -20;
 /** Horizontal offset from the zone wall to the nearer (bottom) vertical riser. */
 const CROSS_SECTION_LINESET_WALL_PAD = 12;
 /** Centerline gap for the parallel pair (same on horizontals and verticals). */
-const CROSS_SECTION_LINESET_PAIR_GAP = 14;
+const CROSS_SECTION_LINESET_PAIR_GAP = 28;
+/** Gap between compressor can and expansion valve. */
+const CROSS_SECTION_TXV_GAP = 10;
 /** Fan fills the left (coil) compartment with a small margin. */
 const CROSS_SECTION_OUTDOOR_FAN_PAD = 14;
 /** Indoor cross-flow blower: vertical pitch of the moving slot pattern. */
@@ -1591,6 +1593,63 @@ function crossSectionCompressor(
     m("path.cross-section-compressor-base-rim", {
       key: "base-rim",
       d: `M${left},${bodyBot} A${halfW},${baseRy} 0 0 1 ${right},${bodyBot}`,
+    }),
+  ]);
+}
+
+/**
+ * 2.5D expansion valve: vertical cylinder with flat sides and elliptical
+ * top + base (no hemispherical dome).
+ */
+function crossSectionExpansionValve(
+  cx: number,
+  cy: number,
+  bodyW: number,
+  bodyH: number,
+  depthY: number,
+): m.Vnode {
+  const halfW = bodyW / 2;
+  const bodyTop = cy - bodyH / 2;
+  const bodyBot = cy + bodyH / 2;
+  const left = cx - halfW;
+  const right = cx + halfW;
+  const endRy = Math.max(5, Math.abs(depthY) * 0.5);
+
+  return m("g.cross-section-expansion", { key: "outdoor-expansion" }, [
+    m("ellipse.cross-section-expansion-base", {
+      key: "base",
+      cx,
+      cy: bodyBot,
+      rx: halfW,
+      ry: endRy,
+    }),
+    m("path.cross-section-expansion-front", {
+      key: "front",
+      d: [
+        `M${left},${bodyTop}`,
+        `V${bodyBot}`,
+        `A${halfW},${endRy} 0 0 1 ${right},${bodyBot}`,
+        `V${bodyTop}`,
+        "Z",
+      ].join(""),
+    }),
+    m("ellipse.cross-section-expansion-top", {
+      key: "top",
+      cx,
+      cy: bodyTop,
+      rx: halfW,
+      ry: endRy,
+    }),
+    m("ellipse.cross-section-expansion-top-rim", {
+      key: "top-rim",
+      cx,
+      cy: bodyTop,
+      rx: halfW,
+      ry: endRy,
+    }),
+    m("path.cross-section-expansion-base-rim", {
+      key: "base-rim",
+      d: `M${left},${bodyBot} A${halfW},${endRy} 0 0 1 ${right},${bodyBot}`,
     }),
   ]);
 }
@@ -1759,7 +1818,8 @@ function linesetRunD(
 }
 
 function crossSectionLineSet(
-  outX: number,
+  outTopX: number,
+  outBotX: number,
   inX: number,
   outTopY: number,
   inTopY: number,
@@ -1775,12 +1835,12 @@ function crossSectionLineSet(
   return m("g.cross-section-lineset", { key: "lineset" }, [
     m(`path.pipe.pipe-${topKind}`, {
       key: "top",
-      d: linesetRunD(outX, inX, outTopY, inTopY, elbowTopX, false),
+      d: linesetRunD(outTopX, inX, outTopY, inTopY, elbowTopX, false),
       fill: "none",
     }),
     m(`path.pipe.pipe-${botKind}`, {
       key: "bot",
-      d: linesetRunD(outX, inX, outBotY, inBotY, elbowBotX, true),
+      d: linesetRunD(outBotX, inX, outBotY, inBotY, elbowBotX, true),
       fill: "none",
     }),
     linesetParticles("top"),
@@ -2126,23 +2186,30 @@ function crossSectionEquipment(flip: boolean, heating: boolean): m.Children {
   const compressorW = Math.min(rightCompartmentW - 18, 42);
   const compressorHFull = outdoorFront.height * 0.68;
   const compressorH = compressorHFull * (2 / 3);
-  // Elliptical base centers on the right-compartment floor parallelogram.
+  // Expansion valve: half the prior cylinder size; flat-top can.
+  const txvW = Math.min(13, compressorW * 0.36);
+  const txvH = compressorH * 0.45;
+  // Elliptical bases share the right-compartment floor; pack both in-bay.
   const compressorBot =
     outdoorFront.y +
     outdoorFront.height +
     CROSS_SECTION_OUTDOOR_DEPTH_Y / 2;
-  const compressorCx =
+  const bayMidX =
     rightCompartmentX +
     rightCompartmentW / 2 +
     CROSS_SECTION_OUTDOOR_DEPTH_X / 2;
+  const pairW = compressorW + CROSS_SECTION_TXV_GAP + txvW;
+  const compressorCx = bayMidX - pairW / 2 + compressorW / 2;
   const compressorCy = compressorBot - compressorH / 2;
-  // Outdoor ends sit on the right-side face centerline (mid-depth),
-  // pair centered around 2/3 height from the top. Indoor-left uses the
-  // front-left edge at the same height.
+  const txvCx =
+    compressorCx + compressorW / 2 + CROSS_SECTION_TXV_GAP + txvW / 2;
+  const txvCy = compressorBot - txvH / 2;
+  // Outdoor top run on the right-side centerline; bottom run meets the TXV.
   const outdoorOnLeft = flip;
-  const outX = outdoorOnLeft
+  const outTopX = outdoorOnLeft
     ? outdoorFront.x + outdoorFront.width + CROSS_SECTION_OUTDOOR_DEPTH_X / 2
     : outdoorFront.x;
+  const outBotX = txvCx - txvW / 2;
   const inX = outdoorOnLeft
     ? indoorFront.x
     : indoorFront.x + indoorFront.width + CROSS_SECTION_INDOOR_DEPTH_X;
@@ -2173,8 +2240,16 @@ function crossSectionEquipment(flip: boolean, heating: boolean): m.Children {
       CROSS_SECTION_COMPRESSOR_DEPTH_X,
       CROSS_SECTION_COMPRESSOR_DEPTH_Y,
     ),
+    crossSectionExpansionValve(
+      txvCx,
+      txvCy,
+      txvW,
+      txvH,
+      CROSS_SECTION_COMPRESSOR_DEPTH_Y,
+    ),
     crossSectionLineSet(
-      outX,
+      outTopX,
+      outBotX,
       inX,
       outTopY,
       inTopY,
