@@ -162,17 +162,26 @@ function sketchStyleIcon(): m.Children {
 }
 
 function crossSectionStyleIcon(): m.Children {
-  return hudIcon([
-    m("rect", { x: 4.5, y: 6.5, width: 15, height: 11, rx: 1.2 }),
-    m("line", {
-      x1: 12,
-      y1: 6.5,
-      x2: 12,
-      y2: 17.5,
-      "stroke-dasharray": "2.2 2.2",
-    }),
-    m("path", { d: "M12 8.5 L15.5 12 L12 15.5" }),
-  ]);
+  return hudIcon(
+    [
+      m("path", {
+        d: "M5 9 H15 V18 H5 Z",
+        fill: "currentColor",
+        "fill-opacity": 0.12,
+      }),
+      m("path", {
+        d: "M5 9 L8 6 H18 L15 9 Z",
+        fill: "currentColor",
+        "fill-opacity": 0.22,
+      }),
+      m("path", {
+        d: "M15 9 L18 6 V15 L15 18 Z",
+        fill: "currentColor",
+        "fill-opacity": 0.18,
+      }),
+    ],
+    { filled: true },
+  );
 }
 
 function backgroundNoneIcon(): m.Children {
@@ -419,7 +428,6 @@ export const ControlPanel: m.Component<ControlPanelAttrs> = {
                 value: "crossSection",
                 label: "Cross-section",
                 icon: crossSectionStyleIcon,
-                available: false,
               },
             ],
             onChange: (componentStyle) =>

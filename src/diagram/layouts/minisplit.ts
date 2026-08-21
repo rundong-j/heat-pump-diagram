@@ -1312,6 +1312,71 @@ function houseContext(flip: boolean): m.Children {
   );
 }
 
+/**
+ * 2.5D cabinet: front rectangle plus top and right parallelograms.
+ * `depthX` / `depthY` are the offset from the front face to the back edge
+ * (positive depthX = right side visible; negative depthY = top rises on screen).
+ */
+function cabinet25d(opts: {
+  key: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  depthX: number;
+  depthY: number;
+}): m.Vnode {
+  const { key, x, y, width, height, depthX, depthY } = opts;
+  const x2 = x + width;
+  const y2 = y + height;
+  const tx = x + depthX;
+  const ty = y + depthY;
+  const tx2 = x2 + depthX;
+  const ty2 = y2 + depthY;
+  return m(`g.cross-section-unit.${key}`, { key }, [
+    m("path.cross-section-face.cross-section-face-top", {
+      key: `${key}-top`,
+      d: `M${x},${y} L${tx},${ty} L${tx2},${ty} L${x2},${y} Z`,
+    }),
+    m("path.cross-section-face.cross-section-face-side", {
+      key: `${key}-side`,
+      d: `M${x2},${y} L${tx2},${ty} L${tx2},${ty2} L${x2},${y2} Z`,
+    }),
+    m("path.cross-section-face.cross-section-face-front", {
+      key: `${key}-front`,
+      d: `M${x},${y} H${x2} V${y2} H${x} Z`,
+    }),
+  ]);
+}
+
+/** Outdoor condenser + indoor head-unit shells for cross-section style. */
+function crossSectionEquipment(flip: boolean): m.Children {
+  // Screen-space placement: outdoor half / indoor half (inside the house body).
+  // Front + top + right-side parallelograms (depth always up and to the right).
+  // `flip` means indoor is on the right (outdoor left).
+  const outdoorFront = flip
+    ? { x: 148, y: 168, width: 168, height: 248 }
+    : { x: 644, y: 168, width: 168, height: 248 };
+  const indoorFront = flip
+    ? { x: 618, y: 248, width: 210, height: 88 }
+    : { x: 132, y: 248, width: 210, height: 88 };
+
+  return [
+    cabinet25d({
+      key: "outdoor-cabinet",
+      ...outdoorFront,
+      depthX: 36,
+      depthY: -26,
+    }),
+    cabinet25d({
+      key: "indoor-cabinet",
+      ...indoorFront,
+      depthX: 28,
+      depthY: -20,
+    }),
+  ];
+}
+
 function snowflakeMark(x: number, y: number, size: number): m.Vnode {
   const diag = size * 0.72;
   return m("g.weather-flake", { transform: `translate(${x} ${y})` }, [
@@ -1399,15 +1464,16 @@ function iconCoilCaption(
   coil: "indoor" | "outdoor",
   text: string,
   flip: boolean,
-  compressorY: number,
 ): m.Vnode {
+  // Stay on the top-run baseline (RV-off compressor caption Y); do not follow
+  // the compressor when RV-on hangs it at coil Y.
   return m(
     "text.box-label",
     {
       key: `${id}Label`,
       "data-component": id,
       x: heatLabelX(coil, flip),
-      y: compressorY + COMPRESSOR_LABEL_Y,
+      y: SIMPLE_BOX_LOOP_TOP + COMPRESSOR_LABEL_Y,
       "text-anchor": "middle",
       dy: COMPRESSOR_LABEL_DY,
     },
@@ -1508,7 +1574,6 @@ function boxedEquipment(
           "indoor",
           coilLabel("indoor", indoorRole, config.coilLabels),
           flipIndoor,
-          circuit.compressor.y,
         )
       : componentBox({
           id: "indoorCoil",
@@ -1526,7 +1591,6 @@ function boxedEquipment(
           "outdoor",
           coilLabel("outdoor", outdoorRole, config.coilLabels),
           flipIndoor,
-          circuit.compressor.y,
         )
       : componentBox({
           id: "outdoorCoil",
@@ -1826,6 +1890,11 @@ export function minisplitScene(config: DiagramConfig): m.Children {
         "g.simple-box-equipment",
         { key: "simple-box-equipment" },
         boxedEquipment(circuit, config, heating, indoorRole, outdoorRole, "box"),
+      ),
+      m(
+        "g.cross-section-equipment",
+        { key: "cross-section-equipment" },
+        crossSectionEquipment(flip),
       ),
     ]),
 

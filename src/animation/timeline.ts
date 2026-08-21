@@ -123,14 +123,16 @@ export class SceneAnimation {
     }
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const simpleBox =
-      config.componentStyle === "simpleBox" || config.componentStyle === "icon";
+    const boxed =
+      config.componentStyle === "simpleBox" ||
+      config.componentStyle === "icon" ||
+      config.componentStyle === "crossSection";
     const labels = this.svg.querySelector("[data-role='labels']");
     const arrows = this.svg.querySelector("[data-role='static-arrows']");
     const heatTransfer = this.svg.querySelector("[data-role='heat-transfer']");
     const airFlow = this.svg.querySelector("[data-role='air-flow']");
 
-    labels?.classList.toggle("is-hidden", !config.overlays.labels || simpleBox);
+    labels?.classList.toggle("is-hidden", !config.overlays.labels || boxed);
     arrows?.classList.toggle("is-hidden", !(config.overlays.direction || reduced));
     heatTransfer?.classList.toggle("is-hidden", !config.overlays.heatTransfer);
     airFlow?.classList.toggle("is-hidden", !config.overlays.heatTransfer);

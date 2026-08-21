@@ -9,7 +9,7 @@ Thermodynamic values are illustrative teaching aids, not a refrigerant property 
 ## Features
 
 - Mini-split cooling and heating modes with animated refrigerant flow
-- Component style: simple box (default) or abstract icon (serpentine coils that solid-style arrows follow, schematic compressor / expansion valve, and a four-way reversing-valve cross-section when the valve is on, with the compressor centered on short suction and discharge stubs)
+- Component style: simple box (default), abstract icon (serpentine coils that solid-style arrows follow, schematic compressor / expansion valve, and a four-way reversing-valve cross-section when the valve is on), or cross-section (2.5D outdoor + indoor cabinet outlines to start)
 - Line style: solid pipes with traveling arrows, marching dashes (default), or flow arrowheads
 - Line color: four-stop temperature scale (default) or constant house-outline stroke
 - Line width & spacing: pressure-based (default; thick/short high-side, thin/regular low-side) or uniform
@@ -55,11 +55,11 @@ src/
 
 ## Defaults
 
-On first load: mini-split, heating, simple box, light theme, house & weather, indoor unit on the right, role-based coil labels (Evaporator / Condenser), XL font, dashed lines, temperature-based color, pressure-based width & spacing, heat transfer on. Toggle **Component style** to Abstract icon for winding coils and a line-drawn four-way reversing-valve cross-section (compressor centered between suction and discharge stubs when the valve is on).
+On first load: mini-split, heating, simple box, light theme, house & weather, indoor unit on the right, role-based coil labels (Evaporator / Condenser), XL font, dashed lines, temperature-based color, pressure-based width & spacing, heat transfer on. Toggle **Component style** to Abstract icon for winding coils and a line-drawn four-way reversing-valve, or Cross-section for 2.5D outdoor + indoor cabinet outlines.
 
 ## Roadmap
 
 - Ducted-split layout
-- Additional art styles (sketch, cross-section; abstract icon is in progress)
+- Cross-section internals and sketch art (cross-section cabinets started; abstract icon in progress)
 - URL-serialized config and SVG/PNG export
 - PowerPoint content add-in host

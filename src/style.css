@@ -608,12 +608,35 @@ body {
   font-family: inherit;
 }
 
-.diagram-scene[data-component-style="simpleBox"] .icon-equipment {
+.diagram-scene:not([data-component-style="simpleBox"]) .simple-box-equipment {
   visibility: hidden;
 }
 
-.diagram-scene:not([data-component-style="simpleBox"]) .simple-box-equipment {
+.diagram-scene:not([data-component-style="icon"]) .icon-equipment {
   visibility: hidden;
+}
+
+.diagram-scene:not([data-component-style="crossSection"]) .cross-section-equipment {
+  visibility: hidden;
+}
+
+.cross-section-equipment {
+  pointer-events: none;
+}
+
+.cross-section-face {
+  fill: var(--unit-fill);
+  stroke: var(--unit-stroke);
+  stroke-width: 1.6;
+  stroke-linejoin: miter;
+}
+
+.cross-section-face-top {
+  fill: color-mix(in srgb, var(--unit-fill) 88%, var(--unit-stroke));
+}
+
+.cross-section-face-side {
+  fill: color-mix(in srgb, var(--unit-fill) 72%, var(--unit-stroke));
 }
 
 .diagram-scene.labels-off .box-label {
@@ -621,7 +644,16 @@ body {
 }
 
 .diagram-scene[data-component-style="simpleBox"] .layer-labels,
-.diagram-scene[data-component-style="icon"] .layer-labels {
+.diagram-scene[data-component-style="icon"] .layer-labels,
+.diagram-scene[data-component-style="crossSection"] .layer-labels {
+  visibility: hidden;
+}
+
+.diagram-scene[data-component-style="crossSection"] .layer-circuit,
+.diagram-scene[data-component-style="crossSection"] .layer-particles,
+.diagram-scene[data-component-style="crossSection"] .layer-arrows,
+.diagram-scene[data-component-style="crossSection"] .layer-air-flow,
+.diagram-scene[data-component-style="crossSection"] .layer-heat-transfer {
   visibility: hidden;
 }
 
