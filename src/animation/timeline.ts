@@ -439,10 +439,14 @@ function coilAirEls(
   const inLen = inStem.getTotalLength();
   const outLen = outStem.getTotalLength();
   const gap = Number(group?.getAttribute("data-air-gap"));
-  if (inLen < 2 || outLen < 2 || !Number.isFinite(gap) || gap < 0) {
+  // Negative gap = fade overlap (outbound starts while inbound is fading out).
+  if (inLen < 2 || outLen < 2 || !Number.isFinite(gap)) {
     return null;
   }
   const track = inLen + gap + outLen;
+  if (track < 2) {
+    return null;
+  }
   const windowAttr = Number(group?.getAttribute("data-air-window"));
   const dartLen =
     Number.isFinite(windowAttr) && windowAttr >= 2 * AIR_FLOW_HEAD_LENGTH

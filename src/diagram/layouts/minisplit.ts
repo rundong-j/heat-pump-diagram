@@ -1406,10 +1406,17 @@ function cabinet25d(opts: {
       key: `${key}-side`,
       d: sideD,
     }),
-    m("path.cross-section-face.cross-section-face-front", {
-      key: `${key}-front`,
-      d: frontD,
-    }),
+  );
+  // Skip a zero-width front when the whole face is cut away.
+  if (cutX == null || cutX > x + 0.5) {
+    children.push(
+      m("path.cross-section-face.cross-section-face-front", {
+        key: `${key}-front`,
+        d: frontD,
+      }),
+    );
+  }
+  children.push(
     // Hidden back edges: left rear vertical, bottom rear, left-bottom depth.
     m("path.cross-section-back-edges", {
       key: `${key}-back`,
@@ -1449,11 +1456,15 @@ function cabinet25d(opts: {
     }),
   );
   if (cutX != null) {
-    // Opening rim: top front of the cut bay (bottom is the floor face edge).
+    // Opening rim: full cutaway gets left + top; partial keeps top of the bay.
+    const rimD =
+      cutX <= x + 0.5
+        ? `M${x},${y} V${y2} M${x},${y} H${x2}`
+        : `M${cutX},${y} H${x2}`;
     children.push(
       m("path.cross-section-cutaway-rim", {
         key: `${key}-cutaway-rim`,
-        d: `M${cutX},${y} H${x2}`,
+        d: rimD,
       }),
     );
   }
@@ -1485,6 +1496,8 @@ const CROSS_SECTION_COMPRESSOR_DEPTH_X = 18;
 const CROSS_SECTION_COMPRESSOR_DEPTH_Y = -14;
 const CROSS_SECTION_BLOWER_DEPTH_X = 22;
 const CROSS_SECTION_BLOWER_DEPTH_Y = -16;
+/** Clearance from diagram bottom for outdoor outbound tips. */
+const CROSS_SECTION_AIR_BOTTOM_CLEARANCE = 24;
 
 /**
  * Face-on axial condenser fan (4 curved blades). Cross-section only —
@@ -1894,8 +1907,10 @@ function diagonalArrowPath(
 /**
  * Cross-section heat-transfer darts: one 45° down-left line through each
  * fan. Inbound ends on the top parallelogram’s far edge (indoor starts at
- * the ceiling); outbound continues from the fan — outdoor to the diagram
- * bottom, indoor matched to that same length.
+ * the ceiling); outbound continues from the fan — outdoor stops short of the
+ * diagram bottom, indoor matched to that same length. Gap through the unit is
+ * zero: outbound emerges when the inbound head has finished fading and
+ * the stem starts to fade.
  */
 function coilAirFlowCrossSection(opts: {
   kind: AirFlowKind;
@@ -1942,8 +1957,9 @@ function coilAirFlowCrossSection(opts: {
     in0y += shift;
     in0x -= shift;
   }
-  // Outdoor outbound reaches the diagram bottom; indoor matches that length.
-  const outdoorOutSpan = VIEWPORT_HEIGHT - layout.fanCy;
+  // Outdoor outbound stops short of the diagram bottom; indoor matches length.
+  const outdoorOutSpan =
+    VIEWPORT_HEIGHT - CROSS_SECTION_AIR_BOTTOM_CLEARANCE - layout.fanCy;
   const outSpan = outdoorOutSpan;
   const out0x = fx;
   const out0y = fy;
@@ -1956,13 +1972,18 @@ function coilAirFlowCrossSection(opts: {
   const outboundClip = diagonalShaftClip(out0x, out0y, out1x, out1y, hs);
   const inboundLen = Math.hypot(in1x - in0x, in1y - in0y);
   const outboundLen = Math.hypot(out1x - out0x, out1y - out0y);
-  const gap = Math.hypot(out0x - in1x, out0y - in1y);
+  // Zero travel through the cabinet. Outbound starts when the inbound head
+  // has finished fading and the stem begins to fade (tip at fadeStart + head).
+  const hlFade = hl;
+  const inFadeOut = Math.max(hlFade, Math.min(36, inboundLen * 0.4));
+  const stemFade = inFadeOut - hlFade;
+  const outFadeIn = Math.max(hlFade * 0.5, stemFade);
+  const gap = hlFade - inFadeOut;
   const { gradientId, groupKey, tailStop, tipStop } = airFlowKindMeta(kind);
   const inFadeId = `${groupKey}-cs-fade-in`;
   const outFadeId = `${groupKey}-cs-fade-out`;
   const inMaskId = `${groupKey}-cs-mask-in`;
   const outMaskId = `${groupKey}-cs-mask-out`;
-  const inFadeOut = Math.min(36, inboundLen * 0.4);
   const outFadeOut = Math.min(
     indoor ? 48 : 40,
     Math.max(hl, outboundLen * 0.4),
@@ -2019,7 +2040,7 @@ function coilAirFlowCrossSection(opts: {
             x2: String(out1x),
             y2: String(out1y),
           },
-          fadeStopsAlong(outboundLen, hl * 0.7, outFadeOut),
+          fadeStopsAlong(outboundLen, outFadeIn, outFadeOut),
         ),
         m(
           "mask",
@@ -2166,6 +2187,8 @@ function crossSectionEquipment(flip: boolean, heating: boolean): m.Children {
       ...indoorFront,
       depthX: CROSS_SECTION_INDOOR_DEPTH_X,
       depthY: CROSS_SECTION_INDOOR_DEPTH_Y,
+      cutawayFrontFrom: 0,
+      bottomFace: true,
     }),
     crossSectionIndoorBlower(
       blower.x,
