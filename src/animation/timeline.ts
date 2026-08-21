@@ -617,6 +617,9 @@ function buildDashTimeline(svg: SVGSVGElement): gsap.core.Timeline {
 function buildMachineTimeline(svg: SVGSVGElement): gsap.core.Timeline {
   const tl = gsap.timeline({ paused: true });
   const outdoorBlades = svg.querySelector(".outdoor-fan .fan-blades");
+  const crossSectionOutdoorBlades = svg.querySelector(
+    ".cross-section-outdoor-fan .cross-section-fan-blades",
+  );
   const indoorBlades = svg.querySelector(".indoor-fan .fan-blades");
   const compressor = svg.querySelectorAll(".compressor-pulse");
 
@@ -634,6 +637,21 @@ function buildMachineTimeline(svg: SVGSVGElement): gsap.core.Timeline {
     );
   }
 
+  if (crossSectionOutdoorBlades) {
+    tl.to(
+      crossSectionOutdoorBlades,
+      {
+        rotation: 360,
+        duration: 3.2,
+        ease: "none",
+        repeat: -1,
+        svgOrigin: "0 0",
+        transformOrigin: "0px 0px",
+      },
+      0,
+    );
+  }
+
   if (indoorBlades) {
     tl.to(
       indoorBlades,
@@ -643,6 +661,22 @@ function buildMachineTimeline(svg: SVGSVGElement): gsap.core.Timeline {
         ease: "none",
         repeat: -1,
         transformOrigin: "0px 0px",
+      },
+      0,
+    );
+  }
+
+  const blowerSlots = svg.querySelector(".cross-section-blower-slots");
+  if (blowerSlots instanceof SVGGElement) {
+    const pitch = Number(blowerSlots.dataset.slotPitch || 5);
+    // Scroll slots in Y only — ribs/outline stay put so the drum reads stationary.
+    tl.to(
+      blowerSlots,
+      {
+        y: pitch,
+        duration: 1.1,
+        ease: "none",
+        repeat: -1,
       },
       0,
     );

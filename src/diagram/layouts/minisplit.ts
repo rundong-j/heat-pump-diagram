@@ -1316,6 +1316,7 @@ function houseContext(flip: boolean): m.Children {
  * 2.5D cabinet: front rectangle plus top and right parallelograms.
  * `depthX` / `depthY` are the offset from the front face to the back edge
  * (positive depthX = right side visible; negative depthY = top rises on screen).
+ * Optional `verticalAt` (0–1) draws a front-to-back compartment wall.
  */
 function cabinet25d(opts: {
   key: string;
@@ -1325,15 +1326,16 @@ function cabinet25d(opts: {
   height: number;
   depthX: number;
   depthY: number;
+  verticalAt?: number;
 }): m.Vnode {
-  const { key, x, y, width, height, depthX, depthY } = opts;
+  const { key, x, y, width, height, depthX, depthY, verticalAt } = opts;
   const x2 = x + width;
   const y2 = y + height;
   const tx = x + depthX;
   const ty = y + depthY;
   const tx2 = x2 + depthX;
   const ty2 = y2 + depthY;
-  return m(`g.cross-section-unit.${key}`, { key }, [
+  const children: m.Children = [
     m("path.cross-section-face.cross-section-face-top", {
       key: `${key}-top`,
       d: `M${x},${y} L${tx},${ty} L${tx2},${ty} L${x2},${y} Z`,
@@ -1346,6 +1348,279 @@ function cabinet25d(opts: {
       key: `${key}-front`,
       d: `M${x},${y} H${x2} V${y2} H${x} Z`,
     }),
+  ];
+  if (verticalAt != null) {
+    const vx = x + width * verticalAt;
+    const vtx = vx + depthX;
+    // Front seam + top-face continuation (same depth as the cabinet).
+    children.push(
+      m("path.cross-section-divider", {
+        key: `${key}-divider`,
+        d: `M${vx},${y} V${y2} M${vx},${y} L${vtx},${ty}`,
+      }),
+    );
+  }
+  return m(`g.cross-section-unit.${key}`, { key }, children);
+}
+
+/** Outdoor condenser front: 4:3 (real mini-split pad unit is low and wide). */
+const CROSS_SECTION_OUTDOOR_W = 224;
+const CROSS_SECTION_OUTDOOR_H = (CROSS_SECTION_OUTDOOR_W * 3) / 4;
+/** Keep the previous tall cabinet’s bottom so the shortened unit stays grounded. */
+const CROSS_SECTION_OUTDOOR_BOTTOM = 168 + 248;
+/** Horizontal centers from the original 168-wide placement (left / right outdoor). */
+const CROSS_SECTION_OUTDOOR_CX_LEFT = 148 + 168 / 2;
+const CROSS_SECTION_OUTDOOR_CX_RIGHT = 644 + 168 / 2;
+const CROSS_SECTION_OUTDOOR_DEPTH_X = 48;
+const CROSS_SECTION_OUTDOOR_DEPTH_Y = -35;
+/** Fan fills the left (coil) compartment with a small margin. */
+const CROSS_SECTION_OUTDOOR_FAN_PAD = 14;
+/** Indoor cross-flow blower: vertical pitch of the moving slot pattern. */
+const CROSS_SECTION_BLOWER_SLOT_PITCH = 5;
+/** Compressor / blower depth (same oblique as cabinets, smaller scale). */
+const CROSS_SECTION_COMPRESSOR_DEPTH_X = 18;
+const CROSS_SECTION_COMPRESSOR_DEPTH_Y = -14;
+const CROSS_SECTION_BLOWER_DEPTH_X = 22;
+const CROSS_SECTION_BLOWER_DEPTH_Y = -16;
+
+/**
+ * Face-on axial condenser fan (4 curved blades). Cross-section only —
+ * do not reuse parked `fanIcon` (3-blade wedge art).
+ */
+function crossSectionOutdoorFan(cx: number, cy: number, r: number): m.Vnode {
+  const hubR = r * 0.2;
+  const root = hubR * 0.95;
+  const tip = r * 0.9;
+  const n = (v: number) => Math.round(v * 100) / 100;
+  // Narrow propeller blade so four reads clearly at 90° spacing.
+  const blade = [
+    `M${n(root * Math.cos(-0.35))},${n(root * Math.sin(-0.35))}`,
+    `C${n(r * 0.45)},${n(-r * 0.42)} ${n(r * 0.72)},${n(-r * 0.38)} ${n(tip * Math.cos(-0.42))},${n(tip * Math.sin(-0.42))}`,
+    `Q${n(tip)},0 ${n(tip * Math.cos(0.28))},${n(tip * Math.sin(0.28))}`,
+    `C${n(r * 0.7)},${n(r * 0.12)} ${n(r * 0.42)},${n(r * 0.08)} ${n(root * Math.cos(0.35))},${n(root * Math.sin(0.35))}`,
+    "Z",
+  ].join("");
+
+  return m(
+    "g.cross-section-outdoor-fan",
+    { key: "outdoor-fan", transform: `translate(${cx} ${cy})` },
+    [
+      m("circle.cross-section-fan-shroud", { key: "shroud", r }),
+      m("g.cross-section-fan-blades", { key: "blades" }, [
+        m("path.cross-section-fan-blade", { key: "b0", d: blade }),
+        m("path.cross-section-fan-blade", {
+          key: "b1",
+          d: blade,
+          transform: "rotate(90)",
+        }),
+        m("path.cross-section-fan-blade", {
+          key: "b2",
+          d: blade,
+          transform: "rotate(180)",
+        }),
+        m("path.cross-section-fan-blade", {
+          key: "b3",
+          d: blade,
+          transform: "rotate(270)",
+        }),
+      ]),
+      m("circle.cross-section-fan-hub", { key: "hub", r: hubR }),
+    ],
+  );
+}
+
+/**
+ * 2.5D scroll compressor: seamless cylinder + hemisphere front, with an
+ * elliptical base (no top lid, no right-side parallelogram).
+ */
+function crossSectionCompressor(
+  cx: number,
+  cy: number,
+  bodyW: number,
+  bodyH: number,
+  _depthX: number,
+  depthY: number,
+): m.Vnode {
+  const halfW = bodyW / 2;
+  const r = halfW;
+  const bodyTop = cy - bodyH / 2 + r * 0.35;
+  const bodyBot = cy + bodyH / 2;
+  const left = cx - halfW;
+  const right = cx + halfW;
+  // Squashed ellipse at the base — replaces the straight bottom edge.
+  const baseRy = Math.max(8, Math.abs(depthY) * 0.7);
+
+  return m("g.cross-section-compressor", { key: "outdoor-compressor" }, [
+    // Base disk (upper half peeks as the far rim once the front is painted).
+    m("ellipse.cross-section-compressor-base", {
+      key: "base",
+      cx,
+      cy: bodyBot,
+      rx: halfW,
+      ry: baseRy,
+    }),
+    // Single outline: dome + sides + elliptical bottom (no dividing chord).
+    m("path.cross-section-compressor-front", {
+      key: "front",
+      d: [
+        `M${left},${bodyTop}`,
+        `A${r},${r} 0 0 1 ${right},${bodyTop}`,
+        `V${bodyBot}`,
+        // Lower half of the base ellipse (clockwise → bottom bulge).
+        `A${halfW},${baseRy} 0 0 1 ${left},${bodyBot}`,
+        "Z",
+      ].join(""),
+    }),
+    // Far rim of the elliptical base (upper half), drawn above the fill.
+    m("path.cross-section-compressor-base-rim", {
+      key: "base-rim",
+      d: `M${left},${bodyBot} A${halfW},${baseRy} 0 0 1 ${right},${bodyBot}`,
+    }),
+  ]);
+}
+
+/**
+ * 2.5D cross-flow blower: horizontal cylinder with elliptical end caps,
+ * front-facing arc ribs, equal-length slots ending at the right ellipse.
+ */
+function crossSectionIndoorBlower(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  depthX: number,
+  _depthY: number,
+): m.Vnode {
+  const r = h / 2;
+  const cy = y + r;
+  // Foreshortened elliptical ends (same on left and right).
+  const endRx = Math.max(r * 0.45, Math.min(r * 0.75, Math.abs(depthX) * 0.85));
+  const leftCx = x + endRx;
+  const rightCx = x + w - endRx;
+  const clipId = "cross-section-blower-clip";
+  const pitch = CROSS_SECTION_BLOWER_SLOT_PITCH;
+  const arcRx = Math.max(10, r * 0.42);
+
+  // Equal-length slots: left tip of left ellipse → left tip of right ellipse
+  // (outer edge of each end’s left half).
+  const slotLeft = leftCx - endRx;
+  const slotRight = rightCx - endRx;
+  const slots: m.Children = [];
+  for (let sy = y - pitch; sy <= y + h + pitch; sy += pitch) {
+    slots.push(
+      m("line.cross-section-blower-slot", {
+        key: `slot-${sy}`,
+        x1: slotLeft,
+        y1: sy,
+        x2: slotRight,
+        y2: sy,
+      }),
+    );
+  }
+
+  const ribs: m.Children = [];
+  for (let i = 0; i < 8; i++) {
+    const vx = leftCx + ((i + 0.5) * (rightCx - leftCx)) / 8;
+    // Sweep 0 → bulge toward the viewer (front of the cylinder).
+    ribs.push(
+      m("path.cross-section-blower-rib", {
+        key: `rib-${i}`,
+        d: `M${vx},${y + 2.5} A${arcRx},${r - 2.5} 0 0 0 ${vx},${y + h - 2.5}`,
+      }),
+    );
+  }
+
+  // Barrel body between the two end ellipses (no arc ends on this path).
+  const bodyD = [
+    `M${leftCx},${y}`,
+    `H${rightCx}`,
+    `V${y + h}`,
+    `H${leftCx}`,
+    "Z",
+  ].join("");
+
+  // Clip = left half of left ellipse + barrel up to the left tip of the right
+  // ellipse (start of that end’s left half), so every slot shares one length.
+  const slotClipD = [
+    `M${leftCx},${y}`,
+    `A${endRx},${r} 0 0 0 ${leftCx},${y + h}`,
+    `H${slotRight}`,
+    `V${y}`,
+    "Z",
+  ].join("");
+
+  const endAttrs = { rx: endRx, ry: r };
+  // Left end: only the left half (no diameter through the barrel).
+  const leftHalfD = [
+    `M${leftCx},${y}`,
+    `A${endRx},${r} 0 0 0 ${leftCx},${y + h}`,
+    "Z",
+  ].join("");
+
+  return m("g.cross-section-indoor-blower", { key: "indoor-blower" }, [
+    m("defs", { key: "defs" }, [
+      m("clipPath", { id: clipId, key: "clip" }, [
+        m("path", { d: slotClipD }),
+      ]),
+    ]),
+    m("path.cross-section-blower-end.cross-section-blower-end-left", {
+      key: "end-left",
+      d: leftHalfD,
+    }),
+    m("ellipse.cross-section-blower-end.cross-section-blower-end-right", {
+      key: "end-right",
+      cx: rightCx,
+      cy,
+      ...endAttrs,
+    }),
+    m("path.cross-section-blower-body", {
+      key: "body",
+      d: bodyD,
+    }),
+    m(
+      "g.cross-section-blower-slots-clip",
+      {
+        key: "slots-clip",
+        // Clip stays fixed on the cylinder; only the inner group scrolls.
+        "clip-path": `url(#${clipId})`,
+      },
+      [
+        m(
+          "g.cross-section-blower-slots",
+          {
+            key: "slots",
+            "data-slot-pitch": String(pitch),
+          },
+          slots,
+        ),
+      ],
+    ),
+    m("g.cross-section-blower-ribs", { key: "ribs" }, ribs),
+    m("line.cross-section-blower-outline", {
+      key: "top",
+      x1: leftCx,
+      y1: y,
+      x2: rightCx,
+      y2: y,
+    }),
+    m("line.cross-section-blower-outline", {
+      key: "bot",
+      x1: leftCx,
+      y1: y + h,
+      x2: rightCx,
+      y2: y + h,
+    }),
+    // Outer arc only — hides the right half and avoids a vertical chord.
+    m("path.cross-section-blower-end-rim", {
+      key: "rim-left",
+      d: `M${leftCx},${y} A${endRx},${r} 0 0 0 ${leftCx},${y + h}`,
+    }),
+    m("ellipse.cross-section-blower-end-rim", {
+      key: "rim-right",
+      cx: rightCx,
+      cy,
+      ...endAttrs,
+    }),
   ]);
 }
 
@@ -1354,26 +1629,75 @@ function crossSectionEquipment(flip: boolean): m.Children {
   // Screen-space placement: outdoor half / indoor half (inside the house body).
   // Front + top + right-side parallelograms (depth always up and to the right).
   // `flip` means indoor is on the right (outdoor left).
-  const outdoorFront = flip
-    ? { x: 148, y: 168, width: 168, height: 248 }
-    : { x: 644, y: 168, width: 168, height: 248 };
+  const outdoorY = CROSS_SECTION_OUTDOOR_BOTTOM - CROSS_SECTION_OUTDOOR_H;
+  const outdoorCx = flip
+    ? CROSS_SECTION_OUTDOOR_CX_LEFT
+    : CROSS_SECTION_OUTDOOR_CX_RIGHT;
+  const outdoorFront = {
+    x: outdoorCx - CROSS_SECTION_OUTDOOR_W / 2,
+    y: outdoorY,
+    width: CROSS_SECTION_OUTDOOR_W,
+    height: CROSS_SECTION_OUTDOOR_H,
+  };
+  const leftCompartmentW = outdoorFront.width * (2 / 3);
+  const rightCompartmentX = outdoorFront.x + leftCompartmentW;
+  const rightCompartmentW = outdoorFront.width - leftCompartmentW;
+  const fanCx = outdoorFront.x + leftCompartmentW / 2;
+  const fanCy = outdoorFront.y + outdoorFront.height / 2;
+  const fanR =
+    Math.min(leftCompartmentW, outdoorFront.height) / 2 -
+    CROSS_SECTION_OUTDOOR_FAN_PAD;
+  const compressorW = Math.min(rightCompartmentW - 18, 42);
+  const compressorHFull = outdoorFront.height * 0.68;
+  const compressorH = compressorHFull * (2 / 3);
+  const compressorCx = rightCompartmentX + rightCompartmentW / 2 - 4;
+  // Keep the previous bottom so the shortened can stays grounded.
+  const compressorBot =
+    outdoorFront.y + outdoorFront.height / 2 + 4 + compressorHFull / 2;
+  const compressorCy = compressorBot - compressorH / 2;
   const indoorFront = flip
     ? { x: 618, y: 248, width: 210, height: 88 }
     : { x: 132, y: 248, width: 210, height: 88 };
+  const blowerPadX = 12;
+  const blowerPadY = 14;
+  const blower = {
+    x: indoorFront.x + blowerPadX,
+    y: indoorFront.y + blowerPadY,
+    w: indoorFront.width - blowerPadX * 2 - 6,
+    h: indoorFront.height - blowerPadY * 2,
+  };
 
   return [
     cabinet25d({
       key: "outdoor-cabinet",
       ...outdoorFront,
-      depthX: 36,
-      depthY: -26,
+      depthX: CROSS_SECTION_OUTDOOR_DEPTH_X,
+      depthY: CROSS_SECTION_OUTDOOR_DEPTH_Y,
+      verticalAt: 2 / 3,
     }),
+    crossSectionOutdoorFan(fanCx, fanCy, fanR),
+    crossSectionCompressor(
+      compressorCx,
+      compressorCy,
+      compressorW,
+      compressorH,
+      CROSS_SECTION_COMPRESSOR_DEPTH_X,
+      CROSS_SECTION_COMPRESSOR_DEPTH_Y,
+    ),
     cabinet25d({
       key: "indoor-cabinet",
       ...indoorFront,
       depthX: 28,
       depthY: -20,
     }),
+    crossSectionIndoorBlower(
+      blower.x,
+      blower.y,
+      blower.w,
+      blower.h,
+      CROSS_SECTION_BLOWER_DEPTH_X,
+      CROSS_SECTION_BLOWER_DEPTH_Y,
+    ),
   ];
 }
 

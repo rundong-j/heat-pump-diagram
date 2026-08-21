@@ -639,6 +639,94 @@ body {
   fill: color-mix(in srgb, var(--unit-fill) 72%, var(--unit-stroke));
 }
 
+.cross-section-divider {
+  fill: none;
+  stroke: var(--unit-stroke);
+  stroke-width: 1.6;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+.cross-section-fan-shroud {
+  fill: none;
+  stroke: var(--unit-stroke);
+  stroke-width: 1.6;
+}
+
+.cross-section-fan-blade {
+  fill: var(--fan-blade);
+  stroke: var(--unit-stroke);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.cross-section-fan-blades {
+  will-change: transform;
+}
+
+.cross-section-fan-hub {
+  fill: var(--fan-hub);
+  stroke: var(--unit-stroke);
+  stroke-width: 1.2;
+}
+
+.cross-section-compressor-base {
+  fill: color-mix(in srgb, var(--machine-fill) 72%, var(--unit-stroke));
+  stroke: none;
+}
+
+.cross-section-compressor-front {
+  fill: var(--machine-fill);
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.cross-section-compressor-base-rim {
+  fill: none;
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.cross-section-blower-body,
+.cross-section-blower-end {
+  fill: color-mix(in srgb, var(--unit-fill) 82%, var(--unit-stroke));
+  stroke: none;
+}
+
+.cross-section-blower-outline {
+  fill: none;
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.cross-section-blower-end-rim {
+  fill: none;
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+}
+
+.cross-section-blower-slot {
+  fill: none;
+  stroke: var(--fan-blade);
+  stroke-width: 1.1;
+  stroke-linecap: butt;
+}
+
+.cross-section-blower-slots {
+  will-change: transform;
+}
+
+.cross-section-blower-rib {
+  fill: none;
+  stroke: var(--unit-stroke);
+  stroke-width: 1.25;
+  stroke-linecap: butt;
+  opacity: 0.9;
+}
+
 .diagram-scene.labels-off .box-label {
   visibility: hidden;
 }
