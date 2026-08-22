@@ -397,12 +397,14 @@ body {
   will-change: transform;
 }
 
-.diagram-scene:not([data-line-style="solid"]) .cross-section-lineset .particle {
+.diagram-scene:not([data-line-style="solid"]) .cross-section-lineset .particle,
+.diagram-scene:not([data-line-style="solid"]) .cross-section-stub-run .particle {
   visibility: hidden;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cross-section-lineset .particle {
+  .cross-section-lineset .particle,
+  .cross-section-stub-run .particle {
     visibility: hidden;
   }
 }
@@ -658,7 +660,7 @@ body {
 }
 
 .cross-section-face-divider {
-  fill: color-mix(in srgb, var(--unit-fill) 78%, var(--unit-stroke));
+  fill: none;
 }
 
 .cross-section-face-open {
@@ -733,7 +735,7 @@ body {
 }
 
 .cross-section-expansion-base {
-  fill: color-mix(in srgb, var(--machine-fill) 72%, var(--unit-stroke));
+  fill: var(--machine-fill);
   stroke: none;
 }
 
@@ -741,21 +743,42 @@ body {
   fill: var(--machine-fill);
   stroke: var(--unit-stroke);
   stroke-width: 1.5;
-  stroke-linejoin: miter;
+  stroke-linejoin: round;
 }
 
 .cross-section-expansion-top {
-  fill: color-mix(in srgb, var(--machine-fill) 88%, var(--unit-stroke));
-  stroke: none;
-}
-
-.cross-section-expansion-top-rim {
-  fill: none;
+  fill: var(--machine-fill);
   stroke: var(--unit-stroke);
   stroke-width: 1.5;
 }
 
 .cross-section-expansion-base-rim {
+  fill: none;
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.cross-section-rv-body,
+.cross-section-rv-end {
+  fill: var(--machine-fill);
+  stroke: none;
+}
+
+.cross-section-rv-outline {
+  fill: none;
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.cross-section-rv-end-rim {
+  fill: none;
+  stroke: var(--unit-stroke);
+  stroke-width: 1.5;
+}
+
+.cross-section-refrigerant-stub {
   fill: none;
   stroke: var(--unit-stroke);
   stroke-width: 1.5;

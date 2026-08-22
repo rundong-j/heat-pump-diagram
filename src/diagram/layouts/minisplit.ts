@@ -21,7 +21,7 @@ import {
   compressorTrapezoid,
   reversingValveSlide,
 } from "../icons";
-import { dashArrowGroups } from "../dashArrows";
+import { dashArrowGroups, type PipeColorId } from "../dashArrows";
 import { layer } from "../layer";
 import { VIEWPORT_HEIGHT, VIEWPORT_WIDTH } from "../viewport";
 
@@ -673,6 +673,46 @@ function linesetParticles(groupKey: string): m.Vnode {
   return m(`g.lineset-particles.lineset-particles-${groupKey}`, {
     key: `particles-${groupKey}`,
   }, arrows);
+}
+
+function crossSectionStubKinds(heating: boolean): {
+  txv: PipeColorId;
+  linesetRv: PipeColorId;
+  compressorDischarge: PipeColorId;
+  rvToOutdoor: PipeColorId;
+  rvToCompressor: PipeColorId;
+} {
+  if (heating) {
+    return {
+      txv: "cold",
+      linesetRv: "hot",
+      compressorDischarge: "hot",
+      rvToOutdoor: "cool",
+      rvToCompressor: "cool",
+    };
+  }
+  return {
+    txv: "warm",
+    linesetRv: "cool",
+    compressorDischarge: "hot",
+    rvToOutdoor: "hot",
+    rvToCompressor: "cool",
+  };
+}
+
+function crossSectionStubRun(
+  groupKey: string,
+  kind: PipeColorId,
+  d: string,
+): m.Vnode {
+  return m("g.cross-section-stub-run", { key: groupKey }, [
+    m(`path.pipe.pipe-${kind}.cross-section-stub-pipe`, {
+      key: "pipe",
+      d,
+      fill: "none",
+    }),
+    linesetParticles(groupKey),
+  ]);
 }
 
 function label(
@@ -1489,6 +1529,10 @@ const CROSS_SECTION_LINESET_WALL_PAD = 12;
 const CROSS_SECTION_LINESET_PAIR_GAP = 28;
 /** Gap between compressor can and expansion valve. */
 const CROSS_SECTION_TXV_GAP = 10;
+/** Vertical lift of the TXV above the compressor centerline. */
+const CROSS_SECTION_TXV_LIFT = 16;
+/** Clearance above line-set / RV for the line-set → RV U-turn. */
+const CROSS_SECTION_LINESET_RV_UTURN_PAD = 10;
 /** Fan fills the left (coil) compartment with a small margin. */
 const CROSS_SECTION_OUTDOOR_FAN_PAD = 14;
 /** Indoor cross-flow blower: vertical pitch of the moving slot pattern. */
@@ -1500,6 +1544,21 @@ const CROSS_SECTION_BLOWER_DEPTH_X = 22;
 const CROSS_SECTION_BLOWER_DEPTH_Y = -16;
 /** Clearance from diagram bottom for outdoor outbound tips. */
 const CROSS_SECTION_AIR_BOTTOM_CLEARANCE = 24;
+
+/** Elliptical end-cap ry for 2.5D cylinders (compressor base, TXV caps). */
+function crossSectionCylinderEndRy(depthY: number): number {
+  return Math.max(8, Math.abs(depthY) * 0.7);
+}
+
+/** Match rx:ry of a reference cylinder end cap at a different radius. */
+function crossSectionMatchedEndRy(
+  halfW: number,
+  depthY: number,
+  referenceHalfW: number,
+): number {
+  const refRy = crossSectionCylinderEndRy(depthY);
+  return halfW * (refRy / referenceHalfW);
+}
 
 /**
  * Face-on axial condenser fan (4 curved blades). Cross-section only —
@@ -1566,7 +1625,7 @@ function crossSectionCompressor(
   const left = cx - halfW;
   const right = cx + halfW;
   // Squashed ellipse at the base — replaces the straight bottom edge.
-  const baseRy = Math.max(8, Math.abs(depthY) * 0.7);
+  const baseRy = crossSectionCylinderEndRy(depthY);
 
   return m("g.cross-section-compressor", { key: "outdoor-compressor" }, [
     // Base disk (upper half peeks as the far rim once the front is painted).
@@ -1606,14 +1665,14 @@ function crossSectionExpansionValve(
   cy: number,
   bodyW: number,
   bodyH: number,
-  depthY: number,
+  endRy: number,
 ): m.Vnode {
   const halfW = bodyW / 2;
   const bodyTop = cy - bodyH / 2;
   const bodyBot = cy + bodyH / 2;
   const left = cx - halfW;
   const right = cx + halfW;
-  const endRy = Math.max(5, Math.abs(depthY) * 0.5);
+  const topRx = halfW * 2;
 
   return m("g.cross-section-expansion", { key: "outdoor-expansion" }, [
     m("ellipse.cross-section-expansion-base", {
@@ -1628,7 +1687,8 @@ function crossSectionExpansionValve(
       d: [
         `M${left},${bodyTop}`,
         `V${bodyBot}`,
-        `A${halfW},${endRy} 0 0 1 ${right},${bodyBot}`,
+        // Lower half of the base ellipse (clockwise → bottom bulge).
+        `A${halfW},${endRy} 0 0 0 ${right},${bodyBot}`,
         `V${bodyTop}`,
         "Z",
       ].join(""),
@@ -1637,14 +1697,7 @@ function crossSectionExpansionValve(
       key: "top",
       cx,
       cy: bodyTop,
-      rx: halfW,
-      ry: endRy,
-    }),
-    m("ellipse.cross-section-expansion-top-rim", {
-      key: "top-rim",
-      cx,
-      cy: bodyTop,
-      rx: halfW,
+      rx: topRx,
       ry: endRy,
     }),
     m("path.cross-section-expansion-base-rim", {
@@ -1800,6 +1853,158 @@ function crossSectionIndoorBlower(
 }
 
 /**
+ * 2.5D reversing valve: horizontal cylinder (same footprint as the TXV,
+ * swapped axes) centered above the outdoor compressor.
+ */
+function crossSectionReversingValve(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  depthX: number,
+): m.Vnode {
+  const r = h / 2;
+  const cy = y + r;
+  const endRx = Math.max(r * 0.45, Math.min(r * 0.75, Math.abs(depthX) * 0.85));
+  const leftCx = x + endRx;
+  const rightCx = x + w - endRx;
+  const bodyD = [
+    `M${leftCx},${y}`,
+    `H${rightCx}`,
+    `V${y + h}`,
+    `H${leftCx}`,
+    "Z",
+  ].join("");
+  const leftHalfD = [
+    `M${leftCx},${y}`,
+    `A${endRx},${r} 0 0 0 ${leftCx},${y + h}`,
+    "Z",
+  ].join("");
+  const endAttrs = { rx: endRx, ry: r };
+
+  return m(
+    "g.cross-section-reversing-valve.reversing-valve",
+    { key: "outdoor-reversing-valve", "data-component": "reversingValve" },
+    [
+      m("path.cross-section-rv-end.cross-section-rv-end-left", {
+        key: "end-left",
+        d: leftHalfD,
+      }),
+      m("ellipse.cross-section-rv-end.cross-section-rv-end-right", {
+        key: "end-right",
+        cx: rightCx,
+        cy,
+        ...endAttrs,
+      }),
+      m("path.cross-section-rv-body", { key: "body", d: bodyD }),
+      m("line.cross-section-rv-outline", {
+        key: "top",
+        x1: leftCx,
+        y1: y,
+        x2: rightCx,
+        y2: y,
+      }),
+      m("line.cross-section-rv-outline", {
+        key: "bot",
+        x1: leftCx,
+        y1: y + h,
+        x2: rightCx,
+        y2: y + h,
+      }),
+      m("path.cross-section-rv-end-rim", {
+        key: "rim-left",
+        d: `M${leftCx},${y} A${endRx},${r} 0 0 0 ${leftCx},${y + h}`,
+      }),
+      m("ellipse.cross-section-rv-end-rim", {
+        key: "rim-right",
+        cx: rightCx,
+        cy,
+        ...endAttrs,
+      }),
+    ],
+  );
+}
+
+/** Colored refrigerant stubs with flow-direction paths (cross-section). */
+function crossSectionRefrigerantStubs(
+  heating: boolean,
+  kinds: ReturnType<typeof crossSectionStubKinds>,
+  compressorTopX: number,
+  compressorTopY: number,
+  rvBottomMidX: number,
+  rvBottomMidY: number,
+  rvTopLeftX: number,
+  rvTopLeftY: number,
+  dividerBackX: number,
+  dividerTopFrontY: number,
+  compLeftBottomHalfX: number,
+  compLeftBottomHalfY: number,
+  rvTopMidX: number,
+  rvTopMidY: number,
+  compRvUTurnY: number,
+): m.Vnode {
+  const rvToOutdoorD = heating
+    ? `M${dividerBackX},${dividerTopFrontY} L${rvTopLeftX},${rvTopLeftY}`
+    : `M${rvTopLeftX},${rvTopLeftY} L${dividerBackX},${dividerTopFrontY}`;
+  const rvToCompressorD = heating
+    ? `M${compLeftBottomHalfX},${compLeftBottomHalfY} V${compRvUTurnY} H${rvTopMidX} V${rvTopMidY}`
+    : `M${rvTopMidX},${rvTopMidY} V${compRvUTurnY} H${compLeftBottomHalfX} V${compLeftBottomHalfY}`;
+
+  return m(
+    "g.cross-section-refrigerant-stubs.reversing-valve",
+    { key: "refrigerant-stubs", "data-component": "reversingValve" },
+    [
+      crossSectionStubRun(
+        "compressor-discharge",
+        kinds.compressorDischarge,
+        `M${compressorTopX},${compressorTopY} L${rvBottomMidX},${rvBottomMidY}`,
+      ),
+      crossSectionStubRun("rv-outdoor", kinds.rvToOutdoor, rvToOutdoorD),
+      crossSectionStubRun("rv-compressor", kinds.rvToCompressor, rvToCompressorD),
+    ],
+  );
+}
+
+/** Square-elbow stub from the outdoor coil to the TXV base. */
+function crossSectionTxvStub(
+  txvBottomX: number,
+  txvBottomY: number,
+  dividerBackBottomX: number,
+  dividerBackBottomY: number,
+  kind: PipeColorId,
+  heating: boolean,
+): m.Vnode {
+  const d = heating
+    ? `M${txvBottomX},${txvBottomY} V${dividerBackBottomY} H${dividerBackBottomX}`
+    : `M${dividerBackBottomX},${dividerBackBottomY} V${txvBottomY} H${txvBottomX}`;
+
+  return m("g.cross-section-txv-stub", { key: "txv-stub" }, [
+    crossSectionStubRun("txv", kind, d),
+  ]);
+}
+
+/** U-turn from the top line-set to the reversing-valve top-right. */
+function crossSectionLinesetToRvStub(
+  lineLeftX: number,
+  lineY: number,
+  rvTopRightX: number,
+  rvTopRightY: number,
+  uTurnY: number,
+  kind: PipeColorId,
+  heating: boolean,
+): m.Vnode {
+  const d = heating
+    ? `M${rvTopRightX},${rvTopRightY} V${uTurnY} H${lineLeftX} V${lineY}`
+    : `M${lineLeftX},${lineY} V${uTurnY} H${rvTopRightX} V${rvTopRightY}`;
+
+  return m(
+    "g.cross-section-lineset-rv-stub.reversing-valve",
+    { key: "lineset-rv-stub", "data-component": "reversingValve" },
+    [crossSectionStubRun("lineset-rv", kind, d)],
+  );
+}
+
+/**
  * Two square-elbow line-set runs. Path direction is screen-space flow
  * (left-bound vs right-bound). Heating: warm / hot. Cooling: cool / cold.
  */
@@ -1820,7 +2025,8 @@ function linesetRunD(
 function crossSectionLineSet(
   outTopX: number,
   outBotX: number,
-  inX: number,
+  inTopX: number,
+  inBotX: number,
   outTopY: number,
   inTopY: number,
   elbowTopX: number,
@@ -1830,17 +2036,19 @@ function crossSectionLineSet(
   const gap = CROSS_SECTION_LINESET_PAIR_GAP;
   const outBotY = outTopY + gap;
   const inBotY = inTopY + gap;
-  const topKind = heating ? "warm" : "cool";
-  const botKind = heating ? "hot" : "cold";
+  const topKind = heating ? "hot" : "cool";
+  const botKind = heating ? "warm" : "cold";
+  const topRightBound = heating;
+  const botRightBound = !heating;
   return m("g.cross-section-lineset", { key: "lineset" }, [
     m(`path.pipe.pipe-${topKind}`, {
       key: "top",
-      d: linesetRunD(outTopX, inX, outTopY, inTopY, elbowTopX, false),
+      d: linesetRunD(outTopX, inTopX, outTopY, inTopY, elbowTopX, topRightBound),
       fill: "none",
     }),
     m(`path.pipe.pipe-${botKind}`, {
       key: "bot",
-      d: linesetRunD(outBotX, inX, outBotY, inBotY, elbowBotX, true),
+      d: linesetRunD(outBotX, inBotX, outBotY, inBotY, elbowBotX, botRightBound),
       fill: "none",
     }),
     linesetParticles("top"),
@@ -2185,10 +2393,13 @@ function crossSectionEquipment(flip: boolean, heating: boolean): m.Children {
   const rightCompartmentW = outdoorFront.width - leftCompartmentW;
   const compressorW = Math.min(rightCompartmentW - 18, 42);
   const compressorHFull = outdoorFront.height * 0.68;
-  const compressorH = compressorHFull * (2 / 3);
+  const compressorH = compressorHFull * (2 / 3) * 0.75;
   // Expansion valve: half the prior cylinder size; flat-top can.
   const txvW = Math.min(13, compressorW * 0.36);
   const txvH = compressorH * 0.45;
+  const rvH = txvW;
+  const txvWScaled = txvW * 0.8;
+  const txvHScaled = txvH * 0.8;
   // Elliptical bases share the right-compartment floor; pack both in-bay.
   const compressorBot =
     outdoorFront.y +
@@ -2198,28 +2409,66 @@ function crossSectionEquipment(flip: boolean, heating: boolean): m.Children {
     rightCompartmentX +
     rightCompartmentW / 2 +
     CROSS_SECTION_OUTDOOR_DEPTH_X / 2;
-  const pairW = compressorW + CROSS_SECTION_TXV_GAP + txvW;
+  const pairW = compressorW + CROSS_SECTION_TXV_GAP + txvWScaled;
   const compressorCx = bayMidX - pairW / 2 + compressorW / 2;
   const compressorCy = compressorBot - compressorH / 2;
   const txvCx =
-    compressorCx + compressorW / 2 + CROSS_SECTION_TXV_GAP + txvW / 2;
-  const txvCy = compressorBot - txvH / 2;
+    compressorCx + compressorW / 2 + CROSS_SECTION_TXV_GAP + txvWScaled / 2;
+  const txvCy = compressorCy - CROSS_SECTION_TXV_LIFT;
+  const txvEndRy = crossSectionMatchedEndRy(
+    txvWScaled / 2,
+    CROSS_SECTION_COMPRESSOR_DEPTH_Y,
+    compressorW / 2,
+  );
+  const rvW = compressorW;
+  const compressorTop =
+    compressorCy - compressorH / 2 + (compressorW / 2) * 0.35;
+  const rvCy = (compressorTop + outdoorFront.y) / 2;
+  const rvX = compressorCx - rvW / 2;
+  const rvY = rvCy - rvH / 2;
+  const dividerBackX =
+    outdoorFront.x +
+    outdoorFront.width * (2 / 3) +
+    CROSS_SECTION_OUTDOOR_DEPTH_X;
+  const dividerTopFrontY = outdoorFront.y;
+  const dividerBackBottomX = dividerBackX;
+  const dividerBackBottomY =
+    outdoorFront.y + outdoorFront.height + CROSS_SECTION_OUTDOOR_DEPTH_Y;
+  const txvBottomY = txvCy + txvHScaled / 2 + txvEndRy;
   // Outdoor top run on the right-side centerline; bottom run meets the TXV.
   const outdoorOnLeft = flip;
   const outTopX = outdoorOnLeft
     ? outdoorFront.x + outdoorFront.width + CROSS_SECTION_OUTDOOR_DEPTH_X / 2
     : outdoorFront.x;
-  const outBotX = txvCx - txvW / 2;
-  const inX = outdoorOnLeft
+  const outBotX = txvCx - txvWScaled / 2;
+  const inTopX = indoorFront.x + indoorFront.width;
+  const inBotX = outdoorOnLeft
     ? indoorFront.x
     : indoorFront.x + indoorFront.width + CROSS_SECTION_INDOOR_DEPTH_X;
+  const inTopY = indoorFront.y;
   const outTopY =
     outdoorFront.y +
     outdoorFront.height * (2 / 3) -
-    CROSS_SECTION_LINESET_PAIR_GAP / 2;
-  const inTopY = indoorFront.y + indoorFront.height * 0.28;
+    CROSS_SECTION_LINESET_PAIR_GAP / 2 -
+    indoorFront.height * 0.28;
   const elbowBotX = ZONE_WIDTH - CROSS_SECTION_LINESET_WALL_PAD;
   const elbowTopX = elbowBotX - CROSS_SECTION_LINESET_PAIR_GAP;
+  const topLineLeftX = Math.min(outTopX, elbowTopX);
+  const rvEndRx = Math.max(
+    (rvH / 2) * 0.45,
+    Math.min((rvH / 2) * 0.75, Math.abs(CROSS_SECTION_COMPRESSOR_DEPTH_X) * 0.85),
+  );
+  const rvTopRightX = rvX + rvW - rvEndRx;
+  const linesetRvUTurnY =
+    Math.min(outTopY, rvY) - CROSS_SECTION_LINESET_RV_UTURN_PAD;
+  const compressorBodyBot = compressorCy + compressorH / 2;
+  const compressorLeftX = compressorCx - compressorW / 2;
+  const compressorBottomHalfY =
+    (compressorTop + compressorBodyBot) / 2 +
+    (compressorBodyBot - compressorTop) / 4;
+  const compressorRvUTurnY =
+    Math.min(compressorBottomHalfY, rvY) - CROSS_SECTION_LINESET_RV_UTURN_PAD;
+  const stubKinds = crossSectionStubKinds(heating);
 
   return [
     cabinet25d({
@@ -2232,6 +2481,14 @@ function crossSectionEquipment(flip: boolean, heating: boolean): m.Children {
       bottomFace: true,
     }),
     crossSectionOutdoorFan(fanCx, fanCy, fanR),
+    crossSectionTxvStub(
+      txvCx,
+      txvBottomY,
+      dividerBackBottomX,
+      dividerBackBottomY,
+      stubKinds.txv,
+      heating,
+    ),
     crossSectionCompressor(
       compressorCx,
       compressorCy,
@@ -2240,21 +2497,49 @@ function crossSectionEquipment(flip: boolean, heating: boolean): m.Children {
       CROSS_SECTION_COMPRESSOR_DEPTH_X,
       CROSS_SECTION_COMPRESSOR_DEPTH_Y,
     ),
-    crossSectionExpansionValve(
-      txvCx,
-      txvCy,
-      txvW,
-      txvH,
-      CROSS_SECTION_COMPRESSOR_DEPTH_Y,
+    crossSectionReversingValve(
+      rvX,
+      rvY,
+      rvW,
+      rvH,
+      CROSS_SECTION_COMPRESSOR_DEPTH_X,
     ),
+    crossSectionRefrigerantStubs(
+      heating,
+      stubKinds,
+      compressorCx,
+      compressorTop,
+      compressorCx,
+      rvY + rvH,
+      rvX,
+      rvY,
+      dividerBackX,
+      dividerTopFrontY,
+      compressorLeftX,
+      compressorBottomHalfY,
+      compressorCx,
+      rvY,
+      compressorRvUTurnY,
+    ),
+    crossSectionExpansionValve(txvCx, txvCy, txvWScaled, txvHScaled, txvEndRy),
     crossSectionLineSet(
       outTopX,
       outBotX,
-      inX,
+      inTopX,
+      inBotX,
       outTopY,
       inTopY,
       elbowTopX,
       elbowBotX,
+      heating,
+    ),
+    crossSectionLinesetToRvStub(
+      topLineLeftX,
+      outTopY,
+      rvTopRightX,
+      rvY,
+      linesetRvUTurnY,
+      stubKinds.linesetRv,
       heating,
     ),
     cabinet25d({

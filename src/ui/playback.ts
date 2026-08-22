@@ -45,9 +45,9 @@ export const PlaybackHud: m.Component<PlaybackHudAttrs> = {
         "Speed",
         m("input", {
           type: "range",
-          min: "0.25",
-          max: "2",
-          step: "0.25",
+          min: "0.125",
+          max: "1",
+          step: "0.125",
           value: String(playback.speed),
           oninput: (event: InputEvent) => {
             const speed = Number((event.target as HTMLInputElement).value);

@@ -46,7 +46,7 @@ export function createDefaultConfig(): DiagramConfig {
     mode: "heating",
     componentStyle: "crossSection", // temporary default while polishing cross-section art
     background: "house",
-    showReversingValve: false,
+    showReversingValve: true, // temporary default while polishing cross-section RV stubs
     indoorSide: "right",
     theme: "light",
     fontScale: 1.3,
@@ -64,7 +64,7 @@ export function createDefaultConfig(): DiagramConfig {
     },
     playback: {
       playing: true,
-      speed: 1,
+      speed: 0.5,
     },
   };
 }

@@ -284,9 +284,11 @@ function buildFlowTimeline(svg: SVGSVGElement, reversed: boolean): gsap.core.Tim
     const speed = loopLen > 0 ? loopLen / LOOP_SECONDS : 1;
     const pipes = [
       ...svg.querySelectorAll<SVGPathElement>(".cross-section-lineset path.pipe"),
+      ...svg.querySelectorAll<SVGPathElement>(".cross-section-stub-pipe"),
     ];
     const groups = [
       ...svg.querySelectorAll(".cross-section-lineset .lineset-particles"),
+      ...svg.querySelectorAll(".cross-section-stub-run .lineset-particles"),
     ];
     pipes.forEach((path, index) => {
       const marks = groups[index]?.querySelectorAll(".particle") ?? [];
